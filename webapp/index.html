@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macropad BLE Config</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1f2630; --border:#30363d; --text:#c9d1d9; --muted:#8b949e; --accent:#58a6ff; --green:#3fb950; --red:#f85149; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:20px; }
+  #status { font-size:13px; color:var(--muted); }
+  #status.ok { color:var(--green); } #status.err { color:var(--red); }
+  #connectBtn { margin-left:auto; padding:8px 16px; background:var(--accent); border:none; border-radius:6px; color:#000; font-weight:600; cursor:pointer; }
+  #connectBtn:hover { filter:brightness(1.15); }
+  #connectBtn:disabled { opacity:0.5; cursor:default; filter:none; }
+  .container { padding:16px; max-width:600px; }
+  .grid-title { font-size:13px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .key-cell { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; text-align:center; }
+  .key-cell .lbl { font-size:12px; color:var(--muted); margin-bottom:8px; font-weight:600; }
+  .key-cell select { width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:5px; padding:6px; font-size:13px; }
+  .actions { margin-top:20px; display:flex; gap:10px; flex-wrap:wrap; }
+  .actions button { padding:10px 18px; border:none; border-radius:6px; font-weight:600; cursor:pointer; }
+  #saveBtn { background:var(--green); color:#000; }
+  #resetBtn { background:var(--panel2); color:var(--text); border:1px solid var(--border); }
+  #loadBtn { background:var(--panel2); color:var(--text); border:1px solid var(--border); }
+  .log { margin-top:16px; background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:12px; max-height:140px; overflow:auto; font-family:monospace; font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎹 Macropad 4×4</h1>
+  <div id="status">Desconectado</div>
+  <button id="connectBtn">Conectar por BLE</button>
+</header>
+
+<div class="container">
+  <div class="grid-title">Una sola capa — 16 teclas</div>
+  <div class="grid" id="grid"></div>
+
+  <div class="actions">
+    <button id="loadBtn">📥 Cargar mapa</button>
+    <button id="saveBtn">💾 Guardar</button>
+    <button id="resetBtn">↺ Restaurar default</button>
+  </div>
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+// ==== CATALOGO (codigos HID exactos — mismos que el firmware) ====
+const KEYS = [
+  {n:"Ninguna",v:"none",t:"K",c:0},
+  // Funcion
+  {n:"F1",v:"f1",t:"K",c:0x3A},{n:"F2",v:"f2",t:"K",c:0x3B},{n:"F3",v:"f3",t:"K",c:0x3C},{n:"F4",v:"f4",t:"K",c:0x3D},
+  {n:"F5",v:"f5",t:"K",c:0x3E},{n:"F6",v:"f6",t:"K",c:0x3F},{n:"F7",v:"f7",t:"K",c:0x40},{n:"F8",v:"f8",t:"K",c:0x41},
+  {n:"F9",v:"f9",t:"K",c:0x42},{n:"F10",v:"f10",t:"K",c:0x43},{n:"F11",v:"f11",t:"K",c:0x44},{n:"F12",v:"f12",t:"K",c:0x45},
+  {n:"F13",v:"f13",t:"K",c:0x68},{n:"F14",v:"f14",t:"K",c:0x69},{n:"F15",v:"f15",t:"K",c:0x6A},{n:"F16",v:"f16",t:"K",c:0x6B},
+  // Navegacion
+  {n:"Inicio",v:"home",t:"K",c:0x4A},{n:"Fin",v:"end",t:"K",c:0x4D},
+  {n:"PageUp",v:"pgup",t:"K",c:0x4B},{n:"PageDown",v:"pgdn",t:"K",c:0x4E},
+  {n:"Insert",v:"ins",t:"K",c:0x49},{n:"Supr",v:"del",t:"K",c:0x4C},
+  {n:"↑",v:"up",t:"K",c:0x52},{n:"↓",v:"down",t:"K",c:0x51},{n:"←",v:"left",t:"K",c:0x50},{n:"→",v:"right",t:"K",c:0x4F},
+  {n:"Tab",v:"tab",t:"K",c:0x2B},{n:"Enter",v:"enter",t:"K",c:0x28},{n:"Espacio",v:"space",t:"K",c:0x2C},
+  {n:"Backspace",v:"bs",t:"K",c:0x2A},{n:"Esc",v:"esc",t:"K",c:0x29},
+  {n:"Caps Lock",v:"caps",t:"K",c:0x39},
+  // Letras
+  {n:"A",v:"a",t:"K",c:0x04},{n:"B",v:"b",t:"K",c:0x05},{n:"C",v:"c",t:"K",c:0x06},{n:"D",v:"d",t:"K",c:0x07},
+  {n:"E",v:"e",t:"K",c:0x08},{n:"F",v:"f",t:"K",c:0x09},{n:"G",v:"g",t:"K",c:0x0A},{n:"H",v:"h",t:"K",c:0x0B},
+  {n:"I",v:"i",t:"K",c:0x0C},{n:"J",v:"j",t:"K",c:0x0D},{n:"K",v:"k",t:"K",c:0x0E},{n:"L",v:"l",t:"K",c:0x0F},
+  {n:"M",v:"m",t:"K",c:0x10},{n:"N",v:"n",t:"K",c:0x11},{n:"O",v:"o",t:"K",c:0x12},{n:"P",v:"p",t:"K",c:0x13},
+  {n:"Q",v:"q",t:"K",c:0x14},{n:"R",v:"r",t:"K",c:0x15},{n:"S",v:"s",t:"K",c:0x16},{n:"T",v:"t",t:"K",c:0x17},
+  {n:"U",v:"u",t:"K",c:0x18},{n:"V",v:"v",t:"K",c:0x19},{n:"W",v:"w",t:"K",c:0x1A},{n:"X",v:"x",t:"K",c:0x1B},
+  {n:"Y",v:"y",t:"K",c:0x1C},{n:"Z",v:"z",t:"K",c:0x1D},
+  // Numeros
+  {n:"0",v:"num0",t:"K",c:0x27},{n:"1",v:"num1",t:"K",c:0x1E},{n:"2",v:"num2",t:"K",c:0x1F},{n:"3",v:"num3",t:"K",c:0x20},
+  {n:"4",v:"num4",t:"K",c:0x21},{n:"5",v:"num5",t:"K",c:0x22},{n:"6",v:"num6",t:"K",c:0x23},{n:"7",v:"num7",t:"K",c:0x24},
+  {n:"8",v:"num8",t:"K",c:0x25},{n:"9",v:"num9",t:"K",c:0x26},
+  // Media
+  {n:"Play/Pausa",v:"playpause",t:"M",c:0xCD},{n:"Siguiente",v:"next",t:"M",c:0xB5},{n:"Anterior",v:"prev",t:"M",c:0xB6},
+  {n:"Mute",v:"mute",t:"M",c:0xE2},{n:"Vol+",v:"volup",t:"M",c:0xE9},{n:"Vol-",v:"voldown",t:"M",c:0xEA},
+  {n:"Detener",v:"stop",t:"M",c:0xB7},{n:"Grabar",v:"record",t:"M",c:0xB2},
+  // Especiales
+  {n:"Sleep",v:"sleep",t:"M",c:0x32},{n:"Calc",v:"calc",t:"M",c:0x192},{n:"Explorador",v:"explorer",t:"M",c:0x194},
+  {n:"Mail",v:"mail",t:"M",c:0x18A},
+];
+
+// ==== BLE ====
+const FFE0_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
+const FFE1_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb";
+
+let macData = null;
+let bleDevice = null, bleChar = null;
+let connected = false;
+
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+function log(m){ logEl.innerHTML += m + "<br>"; logEl.scrollTop=logEl.scrollHeight; }
+function setStatus(m,c){ statusEl.textContent=m; statusEl.className=c||''; }
+
+function keyToString(k){
+  if(k.t==="K") return "K:"+k.c;
+  return "M:"+k.c;
+}
+
+function renderGrid(){
+  const grid = document.getElementById('grid');
+  grid.innerHTML="";
+  for(let i=0;i<16;i++){
+    const cell=document.createElement('div'); cell.className='key-cell';
+    const lbl=document.createElement('div'); lbl.className='lbl'; lbl.textContent="Tecla "+(i+1);
+    cell.appendChild(lbl);
+    const sel=document.createElement('select');
+    KEYS.forEach(k=>{ const o=document.createElement('option'); o.value=k.v; o.textContent=k.n; sel.appendChild(o); });
+    if(macData){
+      const d=macData[i];
+      const match=KEYS.find(k=> (k.t===d.t && k.c===d.c));
+      if(match) sel.value=match.v;
+    }
+    sel.dataset.idx=i;
+    sel.addEventListener('change', onSelectChange);
+    cell.appendChild(sel);
+    grid.appendChild(cell);
+  }
+}
+
+function onSelectChange(e){
+  const idx=parseInt(e.target.dataset.idx);
+  const v=e.target.value;
+  const k=KEYS.find(x=>x.v===v);
+  if(!k) return;
+  macData[idx]={t:k.t,c:k.c};
+  renderGrid();
+}
+
+// ==== BLE Connection ====
+async function connect(){
+  try{
+    setStatus("Buscando macropad...", "");
+    log("Escaneando BLE...");
+
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "MacropadFx" }],
+      optionalServices: [FFE0_UUID]
+    });
+
+    log("Conectando a GATT...");
+    setStatus("Conectando...", "");
+
+    bleDevice.addEventListener('gattserverdisconnected', onDisconnect);
+
+    const server = await bleDevice.gatt.connect();
+    const service = await server.getPrimaryService(FFE0_UUID);
+    bleChar = await service.getCharacteristic(FFE1_UUID);
+
+    connected = true;
+    setStatus("Conectado por BLE", "ok");
+    log("BLE conectado ✓");
+  } catch(e) {
+    setStatus("Error: " + e.message, "err");
+    log("Err: " + e.message);
+    connected = false;
+  }
+}
+
+function onDisconnect(){
+  connected = false;
+  bleDevice = null;
+  bleChar = null;
+  setStatus("Desconectado", "err");
+  log("BLE desconectado");
+}
+
+// ==== GATT Read/Write ====
+async function gattRead(){
+  if(!bleChar) throw new Error("No conectado");
+  const val = await bleChar.readValue();
+  return new TextDecoder().decode(val);
+}
+
+async function gattWrite(str){
+  if(!bleChar) throw new Error("No conectado");
+  await bleChar.writeValue(new TextEncoder().encode(str));
+}
+
+function parseMapLine(line){
+  const teclas=line.split('|');
+  macData=[];
+  for(let i=0;i<teclas.length;i++){
+    const tk=teclas[i].split(':');
+    macData[i]={t:tk[0], c:parseInt(tk[1])};
+  }
+  renderGrid();
+  log("Mapa cargado ✓ (" + teclas.length + " teclas)");
+}
+
+// ==== Actions ====
+document.getElementById('connectBtn').addEventListener('click', connect);
+
+document.getElementById('loadBtn').addEventListener('click', async ()=>{
+  try {
+    log("Leyendo keymap...");
+    const raw = await gattRead();
+    log("RAW: " + raw.substring(0, 80) + (raw.length > 80 ? "..." : ""));
+    if(raw.includes('|')){
+      parseMapLine(raw);
+    } else {
+      log("Respuesta inesperada: " + raw);
+    }
+  } catch(e) {
+    log("Error al leer: " + e.message);
+    setStatus("Error: " + e.message, "err");
+  }
+});
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  if(!macData){ log("Cargá el mapa primero (botón Cargar)"); return; }
+  try {
+    const teclas=[];
+    for(let i=0;i<16;i++) teclas.push(keyToString(macData[i]));
+    const mapStr = teclas.join("|");
+    const cmd = "SETL " + mapStr;
+    log("Enviando: " + cmd.substring(0, 50) + "...");
+    await gattWrite(cmd);
+
+    // Re-leer para confirmar (múltiples intentos)
+    let ok = false;
+    for(let attempt = 1; attempt <= 3; attempt++){
+      await new Promise(r => setTimeout(r, 800));
+      const raw = await gattRead();
+      log("Verif #" + attempt + ": " + raw.substring(0, 60));
+      if(raw === mapStr){
+        ok = true; break;
+      }
+      // Reintentar
+      if(attempt < 3){
+        log("Reintentando...");
+        await gattWrite(cmd);
+      }
+    }
+    if(ok) log("✅ Guardado OK — verificado");
+    else log("⚠️ Verificación difiere — revisar en firmware");
+  } catch(e) {
+    log("Error al guardar: " + e.message);
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', async ()=>{
+  try {
+    log("Restaurando default...");
+    await gattWrite("RESET");
+    await new Promise(r => setTimeout(r, 800));
+    const raw = await gattRead();
+    if(raw.includes('|')){
+      parseMapLine(raw);
+      log("✅ Default restaurado");
+    }
+  } catch(e) {
+    log("Error al restaurar: " + e.message);
+  }
+});
+
+renderGrid();
+setStatus("Desconectado — hacé click en Conectar por BLE");
+</script>
+</body>
+</html>
