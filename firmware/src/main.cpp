@@ -48,10 +48,26 @@ const uint8_t PERM[4][4] = {
   {7, 5, 4, 6},
 };
 
-enum KeyType { KT_KEY, KT_MEDIA };
-struct Key { KeyType type; uint16_t code; };
-#define K(kc) {KT_KEY,(kc)}
-#define M(mc) {KT_MEDIA,(mc)}
+enum KeyType { KT_NONE = 0, KT_KEY, KT_MEDIA, KT_SHORTCUT, KT_SEQ };
+#define SEQ_MAX 8
+struct Key {
+  KeyType type;      // tipo de accion
+  uint16_t code;     // KEY/MEDIA/SHORTCUT: keycode | SEQ: unused
+  uint8_t  mods;     // SHORTCUT: bitmask (1=Ctrl,2=Shift,4=Alt,8=Win)
+  uint8_t  seq[SEQ_MAX];  // SEQ: keycodes a enviar en secuencia
+  uint8_t  seqLen;   // SEQ: cantidad de keycodes (0 = vacio)
+};
+#define K(kc)      {KT_KEY,(kc),0,{0},0}
+#define M(mc)      {KT_MEDIA,(mc),0,{0},0}
+#define A(md,kc)   {KT_SHORTCUT,(kc),(md),{0},0}
+#define S(...)     {KT_SEQ,0,0,{__VA_ARGS__},0}
+
+// Modificadores (bitmask para atajos A:...)
+// 1=Ctrl (LCTRL), 2=Shift (LSHIFT), 4=Alt (LALT), 8=Win (LGUI)
+#define MODS_CTRL  1
+#define MODS_SHIFT 2
+#define MODS_ALT   4
+#define MODS_WIN   8
 
 const Key DEFAULT_MAP[16] = {
   K(KEY_A), K(KEY_B), K(KEY_C), K(KEY_D),
@@ -83,24 +99,104 @@ void saveMap() {
   prefs.end();
 }
 
-// Serializa el keymap a "K:4|K:5|...|M:205" (16 teclas)
+// Convierte el bitmask de mods (1=Ctrl,2=Shift,4=Alt,8=Win) al formato KEY_MOD_* de la lib
+uint8_t modsToLib(uint8_t mods) {
+  uint8_t m = 0;
+  if (mods & MODS_CTRL)  m |= KEY_MOD_LCTRL;
+  if (mods & MODS_SHIFT) m |= KEY_MOD_LSHIFT;
+  if (mods & MODS_ALT)   m |= KEY_MOD_LALT;
+  if (mods & MODS_WIN)   m |= KEY_MOD_LGUI;
+  return m;
+}
+
+// Envia la accion de una tecla al host. Despacha por tipo.
+void sendKey(const Key& k) {
+  switch (k.type) {
+    case KT_KEY:      kb.tap((uint8_t)k.code); break;
+    case KT_MEDIA:    kb.tap(k.code); break;               // uint16_t -> canal consumer/media
+    case KT_SHORTCUT: kb.tap((uint8_t)k.code, modsToLib(k.mods)); break;
+    case KT_SEQ:
+      // Enviar cada keycode de la secuencia en orden, con gap.
+      for (uint8_t i = 0; i < k.seqLen; i++) {
+        if (k.seq[i] == 0) continue;
+        kb.tap((uint8_t)k.seq[i]);
+        delay(20);   // separacion entre teclas de una secuencia
+      }
+      break;
+    default: break;  // KT_NONE
+  }
+}
+
+// Serializa el keymap: "K:4|A:3:41|S:1B 18 10 04|M:205|..." (16 teclas)
+// Formatos por tipo: K:<code> | M:<code> | A:<mods>:<code> | S:<c1> <c2>... | N
 void serializeKeymap(std::string& out) {
   out.clear();
-  char buf[16];
   for (int i=0;i<16;i++) {
-    char t=(KEYMAP[i].type==KT_KEY)?'K':'M';
-    snprintf(buf,sizeof(buf),"%s%c:%u",(i?"|":""),t,KEYMAP[i].code);
+    if (i) out += '|';
+    const Key& k = KEYMAP[i];
+    char buf[48];
+    switch (k.type) {
+      case KT_KEY:
+        snprintf(buf,sizeof(buf),"K:%u",k.code); break;
+      case KT_MEDIA:
+        snprintf(buf,sizeof(buf),"M:%u",k.code); break;
+      case KT_SHORTCUT:
+        snprintf(buf,sizeof(buf),"A:%u:%u",k.mods,k.code); break;
+      case KT_SEQ: {
+        std::string s="S:";
+        for(uint8_t j=0;j<k.seqLen;j++){ char b[8]; snprintf(b,sizeof(b),"%s%X",(j?" ":""),k.seq[j]); s+=b; }
+        snprintf(buf,sizeof(buf),"%s",s.c_str()); break;
+      }
+      default:
+        snprintf(buf,sizeof(buf),"N"); break;  // KT_NONE
+    }
     out += buf;
   }
 }
+
+// Parsea una tecla "T:..." sin el prefijo del separador '|'.
+// Devuelve true si ok. Avanza p hasta el '|' o fin.
+static bool parseOne(const char*& p, Key& out) {
+  if (!p || !*p) return false;
+  char t=*p; if(t!='K'&&t!='M'&&t!='A'&&t!='S'&&t!='N') return false;
+  p++;
+  if (t=='N') { out=Key{KT_NONE,0,0,{0},0}; return true; }   // fin de item, sin ':'
+  if (*p!=':') return false; p++;
+  if (t=='K'||t=='M') {
+    uint16_t code=(uint16_t)atoi(p);
+    while(*p&&*p!='|') p++;
+    out=(t=='K')?Key{KT_KEY,code,0,{0},0}:Key{KT_MEDIA,code,0,{0},0};
+    return true;
+  }
+  if (t=='A') {
+    uint8_t mods=(uint8_t)atoi(p);
+    while(*p&&*p!=':') p++;          // avanzar hasta el ':' separador de mods
+    if(*p!=':') return false; p++;
+    uint16_t code=(uint16_t)atoi(p);
+    while(*p&&*p!='|') p++;
+    out=Key{KT_SHORTCUT,code,mods,{0},0};
+    return true;
+  }
+  // t=='S' secuencia: "c1 c2 ..." (codigos en HEX, ej "1B 18 10 04 28")
+  Key r=Key{KT_SEQ,0,0,{0},0};
+  uint8_t n=0;
+  while(*p&&*p!='|') {
+    while(*p&&*p==' ') p++;
+    if(!*p||*p=='|') break;
+    uint16_t c=(uint16_t)strtol(p,(char**)&p,16);   // base 16 (hex)
+    if (n<SEQ_MAX) r.seq[n++]=(uint8_t)c;
+    while(*p&&*p!=' '&&*p!='|') p++;
+  }
+  r.seqLen=n;
+  out=r;
+  return true;
+}
+
 bool parseKeymap(const std::string& in) {
   Key nk[16]; int idx=0; const char* p=in.c_str();
   while(*p&&idx<16){
-    char t=*p; if(t!='K'&&t!='M') return false;
-    p++; if(*p!=':') return false; p++;
-    uint16_t code=(uint16_t)atoi(p);
-    while(*p&&*p!='|') p++;
-    nk[idx++]=(t=='K')?Key{KT_KEY,code}:Key{KT_MEDIA,code};
+    Key k; if(!parseOne(p,k)) return false;
+    nk[idx++]=k;
     if(*p=='|') p++;
   }
   if(idx==16){ memcpy(KEYMAP,nk,sizeof(KEYMAP)); saveMap(); return true; }
@@ -228,8 +324,7 @@ void loop(){
         // Solo enviar si no estamos esperando la reconexion
         if (!waitingWake) lastActivity = millis();
         if (!waitingWake) {
-          if(k.type==KT_KEY) kb.tap((uint8_t)k.code);
-          else if(k.type==KT_MEDIA) kb.tap(k.code);
+          sendKey(k);
         }
         last[r][c]=true;
       }

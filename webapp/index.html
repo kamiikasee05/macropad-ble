@@ -15,18 +15,23 @@
   #connectBtn { margin-left:auto; padding:8px 16px; background:var(--accent); border:none; border-radius:6px; color:#000; font-weight:600; cursor:pointer; }
   #connectBtn:hover { filter:brightness(1.15); }
   #connectBtn:disabled { opacity:0.5; cursor:default; filter:none; }
-  .container { padding:16px; max-width:600px; }
+  .container { padding:16px; max-width:640px; }
   .grid-title { font-size:13px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
   .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-  .key-cell { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; text-align:center; }
+  .key-cell { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px; }
   .key-cell .lbl { font-size:12px; color:var(--muted); margin-bottom:8px; font-weight:600; }
-  .key-cell select { width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:5px; padding:6px; font-size:13px; }
+  .key-cell select { width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:5px; padding:5px; font-size:12px; margin-bottom:5px; }
+  .key-cell input[type=text] { width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:5px; padding:5px; font-size:12px; font-family:monospace; }
+  .mods { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:5px; }
+  .mods label { font-size:11px; background:var(--panel2); border:1px solid var(--border); border-radius:4px; padding:3px 6px; cursor:pointer; user-select:none; }
+  .mods input { margin-right:3px; }
   .actions { margin-top:20px; display:flex; gap:10px; flex-wrap:wrap; }
   .actions button { padding:10px 18px; border:none; border-radius:6px; font-weight:600; cursor:pointer; }
   #saveBtn { background:var(--green); color:#000; }
   #resetBtn { background:var(--panel2); color:var(--text); border:1px solid var(--border); }
   #loadBtn { background:var(--panel2); color:var(--text); border:1px solid var(--border); }
   .log { margin-top:16px; background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:12px; max-height:140px; overflow:auto; font-family:monospace; font-size:12px; color:var(--muted); }
+  .hint { font-size:11px; color:var(--muted); margin-top:3px; }
 </style>
 </head>
 <body>
@@ -37,7 +42,7 @@
 </header>
 
 <div class="container">
-  <div class="grid-title">Una sola capa — 16 teclas</div>
+  <div class="grid-title">Una sola capa — 16 teclas (Simple / Media / Atajo / Secuencia)</div>
   <div class="grid" id="grid"></div>
 
   <div class="actions">
@@ -50,47 +55,39 @@
 
 <script>
 // ==== CATALOGO (codigos HID exactos — mismos que el firmware) ====
+const TYPE_LABELS = {N:"Ninguna",K:"Tecla simple",M:"Media",A:"Atajo (mod+tecla)",S:"Secuencia"};
+// None (especial, value "" -> no se muestra; nunca se serializa)
+// Teclas normales (para Simple y para el Atajo)
 const KEYS = [
-  {n:"Ninguna",v:"none",t:"K",c:0},
-  // Funcion
-  {n:"F1",v:"f1",t:"K",c:0x3A},{n:"F2",v:"f2",t:"K",c:0x3B},{n:"F3",v:"f3",t:"K",c:0x3C},{n:"F4",v:"f4",t:"K",c:0x3D},
-  {n:"F5",v:"f5",t:"K",c:0x3E},{n:"F6",v:"f6",t:"K",c:0x3F},{n:"F7",v:"f7",t:"K",c:0x40},{n:"F8",v:"f8",t:"K",c:0x41},
-  {n:"F9",v:"f9",t:"K",c:0x42},{n:"F10",v:"f10",t:"K",c:0x43},{n:"F11",v:"f11",t:"K",c:0x44},{n:"F12",v:"f12",t:"K",c:0x45},
-  {n:"F13",v:"f13",t:"K",c:0x68},{n:"F14",v:"f14",t:"K",c:0x69},{n:"F15",v:"f15",t:"K",c:0x6A},{n:"F16",v:"f16",t:"K",c:0x6B},
-  // Navegacion
-  {n:"Inicio",v:"home",t:"K",c:0x4A},{n:"Fin",v:"end",t:"K",c:0x4D},
-  {n:"PageUp",v:"pgup",t:"K",c:0x4B},{n:"PageDown",v:"pgdn",t:"K",c:0x4E},
-  {n:"Insert",v:"ins",t:"K",c:0x49},{n:"Supr",v:"del",t:"K",c:0x4C},
-  {n:"↑",v:"up",t:"K",c:0x52},{n:"↓",v:"down",t:"K",c:0x51},{n:"←",v:"left",t:"K",c:0x50},{n:"→",v:"right",t:"K",c:0x4F},
-  {n:"Tab",v:"tab",t:"K",c:0x2B},{n:"Enter",v:"enter",t:"K",c:0x28},{n:"Espacio",v:"space",t:"K",c:0x2C},
-  {n:"Backspace",v:"bs",t:"K",c:0x2A},{n:"Esc",v:"esc",t:"K",c:0x29},
-  {n:"Caps Lock",v:"caps",t:"K",c:0x39},
-  // Letras
-  {n:"A",v:"a",t:"K",c:0x04},{n:"B",v:"b",t:"K",c:0x05},{n:"C",v:"c",t:"K",c:0x06},{n:"D",v:"d",t:"K",c:0x07},
-  {n:"E",v:"e",t:"K",c:0x08},{n:"F",v:"f",t:"K",c:0x09},{n:"G",v:"g",t:"K",c:0x0A},{n:"H",v:"h",t:"K",c:0x0B},
-  {n:"I",v:"i",t:"K",c:0x0C},{n:"J",v:"j",t:"K",c:0x0D},{n:"K",v:"k",t:"K",c:0x0E},{n:"L",v:"l",t:"K",c:0x0F},
-  {n:"M",v:"m",t:"K",c:0x10},{n:"N",v:"n",t:"K",c:0x11},{n:"O",v:"o",t:"K",c:0x12},{n:"P",v:"p",t:"K",c:0x13},
-  {n:"Q",v:"q",t:"K",c:0x14},{n:"R",v:"r",t:"K",c:0x15},{n:"S",v:"s",t:"K",c:0x16},{n:"T",v:"t",t:"K",c:0x17},
-  {n:"U",v:"u",t:"K",c:0x18},{n:"V",v:"v",t:"K",c:0x19},{n:"W",v:"w",t:"K",c:0x1A},{n:"X",v:"x",t:"K",c:0x1B},
-  {n:"Y",v:"y",t:"K",c:0x1C},{n:"Z",v:"z",t:"K",c:0x1D},
-  // Numeros
-  {n:"0",v:"num0",t:"K",c:0x27},{n:"1",v:"num1",t:"K",c:0x1E},{n:"2",v:"num2",t:"K",c:0x1F},{n:"3",v:"num3",t:"K",c:0x20},
-  {n:"4",v:"num4",t:"K",c:0x21},{n:"5",v:"num5",t:"K",c:0x22},{n:"6",v:"num6",t:"K",c:0x23},{n:"7",v:"num7",t:"K",c:0x24},
-  {n:"8",v:"num8",t:"K",c:0x25},{n:"9",v:"num9",t:"K",c:0x26},
-  // Media
-  {n:"Play/Pausa",v:"playpause",t:"M",c:0xCD},{n:"Siguiente",v:"next",t:"M",c:0xB5},{n:"Anterior",v:"prev",t:"M",c:0xB6},
-  {n:"Mute",v:"mute",t:"M",c:0xE2},{n:"Vol+",v:"volup",t:"M",c:0xE9},{n:"Vol-",v:"voldown",t:"M",c:0xEA},
-  {n:"Detener",v:"stop",t:"M",c:0xB7},{n:"Grabar",v:"record",t:"M",c:0xB2},
-  // Especiales
-  {n:"Sleep",v:"sleep",t:"M",c:0x32},{n:"Calc",v:"calc",t:"M",c:0x192},{n:"Explorador",v:"explorer",t:"M",c:0x194},
-  {n:"Mail",v:"mail",t:"M",c:0x18A},
+  {n:"F1",c:0x3A},{n:"F2",c:0x3B},{n:"F3",c:0x3C},{n:"F4",c:0x3D},{n:"F5",c:0x3E},{n:"F6",c:0x3F},
+  {n:"F7",c:0x40},{n:"F8",c:0x41},{n:"F9",c:0x42},{n:"F10",c:0x43},{n:"F11",c:0x44},{n:"F12",c:0x45},
+  {n:"F13",c:0x68},{n:"F14",c:0x69},{n:"F15",c:0x6A},{n:"F16",c:0x6B},
+  {n:"Inicio",c:0x4A},{n:"Fin",c:0x4D},{n:"PageUp",c:0x4B},{n:"PageDown",c:0x4E},
+  {n:"Insert",c:0x49},{n:"Supr",c:0x4C},
+  {n:"↑",c:0x52},{n:"↓",c:0x51},{n:"←",c:0x50},{n:"→",c:0x4F},
+  {n:"Tab",c:0x2B},{n:"Enter",c:0x28},{n:"Espacio",c:0x2C},{n:"Backspace",c:0x2A},{n:"Esc",c:0x29},{n:"Caps Lock",c:0x39},
+  {n:"A",c:0x04},{n:"B",c:0x05},{n:"C",c:0x06},{n:"D",c:0x07},{n:"E",c:0x08},{n:"F",c:0x09},{n:"G",c:0x0A},{n:"H",c:0x0B},
+  {n:"I",c:0x0C},{n:"J",c:0x0D},{n:"K",c:0x0E},{n:"L",c:0x0F},{n:"M",c:0x10},{n:"N",c:0x11},{n:"O",c:0x12},{n:"P",c:0x13},
+  {n:"Q",c:0x14},{n:"R",c:0x15},{n:"S",c:0x16},{n:"T",c:0x17},{n:"U",c:0x18},{n:"V",c:0x19},{n:"W",c:0x1A},{n:"X",c:0x1B},
+  {n:"Y",c:0x1C},{n:"Z",c:0x1D},
+  {n:"0",c:0x27},{n:"1",c:0x1E},{n:"2",c:0x1F},{n:"3",c:0x20},{n:"4",c:0x21},{n:"5",c:0x22},{n:"6",c:0x23},{n:"7",c:0x24},
+  {n:"8",c:0x25},{n:"9",c:0x26},
+];
+const MEDIA_KEYS = [
+  {n:"Play/Pausa",c:0xCD},{n:"Siguiente",c:0xB5},{n:"Anterior",c:0xB6},{n:"Mute",c:0xE2},
+  {n:"Vol+",c:0xE9},{n:"Vol-",c:0xEA},{n:"Detener",c:0xB7},{n:"Grabar",c:0xB2},
+  {n:"Sleep",c:0x32},{n:"Calc",c:0x192},{n:"Explorador",c:0x194},{n:"Mail",c:0x18A},
+];
+// Modificadores para el Atajo (bitmask que usa el firmware: 1=C,2=S,4=A,8=W)
+const MODS = [
+  {n:"Ctrl",b:1},{n:"Shift",b:2},{n:"Alt",b:4},{n:"Win",b:8},
 ];
 
 // ==== BLE ====
 const FFE0_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
 const FFE1_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
-let macData = null;
+let macData = Array.from({length:16}, () => ({N:true}));
 let bleDevice = null, bleChar = null;
 let connected = false;
 
@@ -99,61 +96,151 @@ const logEl = document.getElementById('log');
 function log(m){ logEl.innerHTML += m + "<br>"; logEl.scrollTop=logEl.scrollHeight; }
 function setStatus(m,c){ statusEl.textContent=m; statusEl.className=c||''; }
 
-function keyToString(k){
-  if(k.t==="K") return "K:"+k.c;
-  return "M:"+k.c;
+// objeto interno por tecla: {N} | {K,c} | {M,c} | {A,mods,c} | {S,seq:[...]}
+
+// ==== UI de una celda ====
+function keyToText(k){
+  if(k.N) return "Ninguna";
+  if(k.K) return "Tecla "+k.c;
+  if(k.M) return "Media "+k.c;
+  if(k.A){
+    const names=[]; MODS.forEach(m=>{ if(k.mods&m.b) names.push(m.n); });
+    const key=KEYS.find(x=>x.c===k.c);
+    return (names.length?names.join("+")+"+":"")+(key?key.n:"#"+k.c);
+  }
+  if(k.S) return "Sec ("+k.seq.length+" teclas)";
+  return "?";
+}
+
+function optList(arr){
+  return arr.map(x=>`<option value="${x.c}">${x.n}</option>`).join("");
+}
+
+function buildCell(i, k){
+  const type = k.N?"N":(k.K?"K":(k.M?"M":(k.A?"A":"S")));
+  let body = '';
+  // Tipo
+  body += `<select class="kt" data-i="${i}">` +
+    ["N","K","M","A","S"].map(t=>`<option value="${t}" ${t===type?"selected":""}>${TYPE_LABELS[t]}</option>`).join("") +
+    `</select>`;
+  // Campo según tipo
+  if(type==="K"||type==="A"){
+    if(type==="A"){
+      let cb='';
+      MODS.forEach(m=>{ cb+=`<label><input type="checkbox" class="kmod" data-i="${i}" data-b="${m.b}" ${k.mods&m.b?"checked":""}>${m.n}</label>`; });
+      body += `<div class="mods">${cb}</div>`;
+    }
+    body += `<select class="kcode" data-i="${i}">${optList(KEYS)}</select>`;
+  } else if(type==="M"){
+    body += `<select class="kcode" data-i="${i}">${optList(MEDIA_KEYS)}</select>`;
+  } else if(type==="S"){
+    body += `<input type="text" class="kseq" data-i="${i}" placeholder="códigos hex sep por espacio, ej: 1B 18 10 04 28" value="${(k.S?k.seq.join(" "):"")}">`;
+    body += `<div class="hint">Escribí keycodes hex (ej: Ctrl+C = control no va acá). Ver nota abajo.</div>`;
+  }
+  return `<div class="key-cell" data-i="${i}">
+    <div class="lbl">Tecla ${i+1}</div>
+    ${body}
+    <div class="hint out" id="out-${i}">${keyToText(k)}</div>
+  </div>`;
 }
 
 function renderGrid(){
   const grid = document.getElementById('grid');
   grid.innerHTML="";
+  for(let i=0;i<16;i++) grid.innerHTML += buildCell(i, macData[i]);
+  // bind events
+  document.querySelectorAll('.kt').forEach(el=>el.addEventListener('change', onTypeChange));
+  document.querySelectorAll('.kcode').forEach(el=>el.addEventListener('change', onCodeChange));
+  document.querySelectorAll('.kmod').forEach(el=>el.addEventListener('change', onModsChange));
+  document.querySelectorAll('.kseq').forEach(el=>el.addEventListener('input', onSeqChange));
+  refreshOutputs();
+}
+
+function refreshOutputs(){
   for(let i=0;i<16;i++){
-    const cell=document.createElement('div'); cell.className='key-cell';
-    const lbl=document.createElement('div'); lbl.className='lbl'; lbl.textContent="Tecla "+(i+1);
-    cell.appendChild(lbl);
-    const sel=document.createElement('select');
-    KEYS.forEach(k=>{ const o=document.createElement('option'); o.value=k.v; o.textContent=k.n; sel.appendChild(o); });
-    if(macData){
-      const d=macData[i];
-      const match=KEYS.find(k=> (k.t===d.t && k.c===d.c));
-      if(match) sel.value=match.v;
-    }
-    sel.dataset.idx=i;
-    sel.addEventListener('change', onSelectChange);
-    cell.appendChild(sel);
-    grid.appendChild(cell);
+    const el=document.getElementById('out-'+i);
+    if(el) el.textContent=keyToText(macData[i]);
   }
 }
 
-function onSelectChange(e){
-  const idx=parseInt(e.target.dataset.idx);
-  const v=e.target.value;
-  const k=KEYS.find(x=>x.v===v);
-  if(!k) return;
-  macData[idx]={t:k.t,c:k.c};
+function onTypeChange(e){
+  const i=parseInt(e.target.dataset.i);
+  const t=e.target.value;
+  macData[i] = (t==="K")?{K:true,c:KEYS[0].c}:(t==="M")?{M:true,c:MEDIA_KEYS[0].c}:(t==="A")?{A:true,mods:MODS[0].b,c:KEYS[0].c}:(t==="S")?{S:true,seq:[]}:{N:true};
   renderGrid();
 }
 
-// ==== BLE Connection ====
+function onCodeChange(e){
+  const i=parseInt(e.target.dataset.i);
+  const c=parseInt(e.target.value);
+  if(macData[i].K) macData[i]={K:true,c};
+  else if(macData[i].M) macData[i]={M:true,c};
+  else if(macData[i].A) { macData[i].c=c; macData[i]={A:true,mods:macData[i].mods,c}; }
+  refreshOutputs();
+}
+
+function onModsChange(e){
+  const i=parseInt(e.target.dataset.i);
+  const b=parseInt(e.target.dataset.b);
+  let m = macData[i].mods||0;
+  m = (e.target.checked)? (m|b) : (m&~b);
+  if(m===0) m=MODS[0].b; // asegurar al menos un mod
+  macData[i]={A:true,mods:m,c:macData[i].c||KEYS[0].c};
+  refreshOutputs();
+}
+
+function onSeqChange(e){
+  const i=parseInt(e.target.dataset.i);
+  const raw=e.target.value;
+  const parts = raw.trim().split(/\s+/).filter(Boolean).map(x=>parseInt(x,16));
+  macData[i]={S:true,seq:parts.filter(n=>!isNaN(n))};
+  refreshOutputs();
+}
+
+// ==== Serializacion ====
+function keyToString(k){
+  if(k.N) return "N";
+  if(k.K) return "K:"+k.c;
+  if(k.M) return "M:"+k.c;
+  if(k.A) return "A:"+k.mods+":"+k.c;
+  if(k.S) return "S:"+(k.seq.map(x=>x.toString(16).toUpperCase()).join(" "));
+  return "N";
+}
+
+function parseOne(str){
+  const parts = str.split(':');
+  const t = parts[0];
+  if(t==="N") return {N:true};
+  if(t==="K") return {K:true,c:parseInt(parts[1])};
+  if(t==="M") return {M:true,c:parseInt(parts[1])};
+  if(t==="A") return {A:true,mods:parseInt(parts[1]),c:parseInt(parts[2])};
+  if(t==="S") return {S:true,seq:(parts[1]||"").trim().split(/\s+/).filter(Boolean).map(x=>parseInt(x,16))};
+  return {N:true};
+}
+
+function parseMapLine(line){
+  const teclas=line.split('|');
+  macData=[];
+  for(let i=0;i<teclas.length;i++) macData[i]=parseOne(teclas[i]);
+  renderGrid();
+  log("Mapa cargado ✓ (" + teclas.length + " teclas)");
+}
+
+// ==== BLE ====
 async function connect(){
   try{
     setStatus("Buscando macropad...", "");
     log("Escaneando BLE...");
-
     bleDevice = await navigator.bluetooth.requestDevice({
       filters: [{ name: "MacropadFx" }],
       optionalServices: [FFE0_UUID]
     });
-
     log("Conectando a GATT...");
     setStatus("Conectando...", "");
-
     bleDevice.addEventListener('gattserverdisconnected', onDisconnect);
-
     const server = await bleDevice.gatt.connect();
     const service = await server.getPrimaryService(FFE0_UUID);
     bleChar = await service.getCharacteristic(FFE1_UUID);
-
     connected = true;
     setStatus("Conectado por BLE", "ok");
     log("BLE conectado ✓");
@@ -163,59 +250,32 @@ async function connect(){
     connected = false;
   }
 }
-
 function onDisconnect(){
-  connected = false;
-  bleDevice = null;
-  bleChar = null;
-  setStatus("Desconectado", "err");
-  log("BLE desconectado");
+  connected = false; bleDevice = null; bleChar = null;
+  setStatus("Desconectado", "err"); log("BLE desconectado");
 }
-
-// ==== GATT Read/Write ====
 async function gattRead(){
   if(!bleChar) throw new Error("No conectado");
   const val = await bleChar.readValue();
   return new TextDecoder().decode(val);
 }
-
 async function gattWrite(str){
   if(!bleChar) throw new Error("No conectado");
   await bleChar.writeValue(new TextEncoder().encode(str));
 }
 
-function parseMapLine(line){
-  const teclas=line.split('|');
-  macData=[];
-  for(let i=0;i<teclas.length;i++){
-    const tk=teclas[i].split(':');
-    macData[i]={t:tk[0], c:parseInt(tk[1])};
-  }
-  renderGrid();
-  log("Mapa cargado ✓ (" + teclas.length + " teclas)");
-}
-
 // ==== Actions ====
 document.getElementById('connectBtn').addEventListener('click', connect);
-
 document.getElementById('loadBtn').addEventListener('click', async ()=>{
   try {
     log("Leyendo keymap...");
     const raw = await gattRead();
     log("RAW: " + raw.substring(0, 80) + (raw.length > 80 ? "..." : ""));
-    if(raw.includes('|')){
-      parseMapLine(raw);
-    } else {
-      log("Respuesta inesperada: " + raw);
-    }
-  } catch(e) {
-    log("Error al leer: " + e.message);
-    setStatus("Error: " + e.message, "err");
-  }
+    if(raw.includes('|')) parseMapLine(raw);
+    else log("Respuesta inesperada: " + raw);
+  } catch(e) { log("Error al leer: " + e.message); setStatus("Error: " + e.message, "err"); }
 });
-
 document.getElementById('saveBtn').addEventListener('click', async ()=>{
-  if(!macData){ log("Cargá el mapa primero (botón Cargar)"); return; }
   try {
     const teclas=[];
     for(let i=0;i<16;i++) teclas.push(keyToString(macData[i]));
@@ -223,42 +283,26 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const cmd = "SETL " + mapStr;
     log("Enviando: " + cmd.substring(0, 50) + "...");
     await gattWrite(cmd);
-
-    // Re-leer para confirmar (múltiples intentos)
     let ok = false;
     for(let attempt = 1; attempt <= 3; attempt++){
       await new Promise(r => setTimeout(r, 800));
       const raw = await gattRead();
       log("Verif #" + attempt + ": " + raw.substring(0, 60));
-      if(raw === mapStr){
-        ok = true; break;
-      }
-      // Reintentar
-      if(attempt < 3){
-        log("Reintentando...");
-        await gattWrite(cmd);
-      }
+      if(raw === mapStr){ ok = true; break; }
+      if(attempt < 3){ log("Reintentando..."); await gattWrite(cmd); }
     }
     if(ok) log("✅ Guardado OK — verificado");
     else log("⚠️ Verificación difiere — revisar en firmware");
-  } catch(e) {
-    log("Error al guardar: " + e.message);
-  }
+  } catch(e) { log("Error al guardar: " + e.message); }
 });
-
 document.getElementById('resetBtn').addEventListener('click', async ()=>{
   try {
     log("Restaurando default...");
     await gattWrite("RESET");
     await new Promise(r => setTimeout(r, 800));
     const raw = await gattRead();
-    if(raw.includes('|')){
-      parseMapLine(raw);
-      log("✅ Default restaurado");
-    }
-  } catch(e) {
-    log("Error al restaurar: " + e.message);
-  }
+    if(raw.includes('|')){ parseMapLine(raw); log("✅ Default restaurado"); }
+  } catch(e) { log("Error al restaurar: " + e.message); }
 });
 
 renderGrid();
