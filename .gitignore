@@ -16,6 +16,10 @@
 # Pagina de prueba local (web app de dev)
 test-app/
 
+# Material de entrada (zip + salida de Stitch)
+stitch_output/
+*.zip
+
 # OS
 .DS_Store
 Thumbs.db
