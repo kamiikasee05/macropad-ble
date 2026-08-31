@@ -54,13 +54,13 @@ struct Key {
   KeyType type;      // tipo de accion
   uint16_t code;     // KEY/MEDIA/SHORTCUT: keycode | SEQ: unused
   uint8_t  mods;     // SHORTCUT: bitmask (1=Ctrl,2=Shift,4=Alt,8=Win)
-  uint8_t  seq[SEQ_MAX];  // SEQ: keycodes a enviar en secuencia
-  uint8_t  seqLen;   // SEQ: cantidad de keycodes (0 = vacio)
+  uint8_t  seq[SEQ_MAX];      // SEQ: keycodes a enviar en secuencia
+  uint8_t  seqMods[SEQ_MAX];  // SEQ: mods por paso (0 = sin modificador)
+  uint8_t  seqLen;   // SEQ: cantidad de pasos (0 = vacio)
 };
-#define K(kc)      {KT_KEY,(kc),0,{0},0}
-#define M(mc)      {KT_MEDIA,(mc),0,{0},0}
-#define A(md,kc)   {KT_SHORTCUT,(kc),(md),{0},0}
-#define S(...)     {KT_SEQ,0,0,{__VA_ARGS__},0}
+#define K(kc)      {KT_KEY,(kc),0,{0},{0},0}
+#define M(mc)      {KT_MEDIA,(mc),0,{0},{0},0}
+#define A(md,kc)   {KT_SHORTCUT,(kc),(md),{0},{0},0}
 
 // Modificadores (bitmask para atajos A:...)
 // 1=Ctrl (LCTRL), 2=Shift (LSHIFT), 4=Alt (LALT), 8=Win (LGUI)
@@ -116,11 +116,12 @@ void sendKey(const Key& k) {
     case KT_MEDIA:    kb.tap(k.code); break;               // uint16_t -> canal consumer/media
     case KT_SHORTCUT: kb.tap((uint8_t)k.code, modsToLib(k.mods)); break;
     case KT_SEQ:
-      // Enviar cada keycode de la secuencia en orden, con gap.
+      // Enviar cada paso de la secuencia en orden, con gap.
       for (uint8_t i = 0; i < k.seqLen; i++) {
         if (k.seq[i] == 0) continue;
-        kb.tap((uint8_t)k.seq[i]);
-        delay(20);   // separacion entre teclas de una secuencia
+        if (k.seqMods[i]) kb.tap((uint8_t)k.seq[i], modsToLib(k.seqMods[i]));
+        else              kb.tap((uint8_t)k.seq[i]);
+        delay(20);   // separacion entre pasos de una secuencia
       }
       break;
     default: break;  // KT_NONE
@@ -144,7 +145,12 @@ void serializeKeymap(std::string& out) {
         snprintf(buf,sizeof(buf),"A:%u:%u",k.mods,k.code); break;
       case KT_SEQ: {
         std::string s="S:";
-        for(uint8_t j=0;j<k.seqLen;j++){ char b[8]; snprintf(b,sizeof(b),"%s%X",(j?" ":""),k.seq[j]); s+=b; }
+        for(uint8_t j=0;j<k.seqLen;j++){
+          char b[12];
+          if (k.seqMods[j]) snprintf(b,sizeof(b),"%s%X:%X",(j?" ":""),k.seqMods[j],k.seq[j]);
+          else              snprintf(b,sizeof(b),"%s%X",(j?" ":""),k.seq[j]);
+          s+=b;
+        }
         snprintf(buf,sizeof(buf),"%s",s.c_str()); break;
       }
       default:
@@ -160,12 +166,12 @@ static bool parseOne(const char*& p, Key& out) {
   if (!p || !*p) return false;
   char t=*p; if(t!='K'&&t!='M'&&t!='A'&&t!='S'&&t!='N') return false;
   p++;
-  if (t=='N') { out=Key{KT_NONE,0,0,{0},0}; return true; }   // fin de item, sin ':'
+  if (t=='N') { out=Key{KT_NONE,0,0,{0},{0},0}; return true; }   // fin de item, sin ':'
   if (*p!=':') return false; p++;
   if (t=='K'||t=='M') {
     uint16_t code=(uint16_t)atoi(p);
     while(*p&&*p!='|') p++;
-    out=(t=='K')?Key{KT_KEY,code,0,{0},0}:Key{KT_MEDIA,code,0,{0},0};
+    out=(t=='K')?Key{KT_KEY,code,0,{0},{0},0}:Key{KT_MEDIA,code,0,{0},{0},0};
     return true;
   }
   if (t=='A') {
@@ -174,17 +180,23 @@ static bool parseOne(const char*& p, Key& out) {
     if(*p!=':') return false; p++;
     uint16_t code=(uint16_t)atoi(p);
     while(*p&&*p!='|') p++;
-    out=Key{KT_SHORTCUT,code,mods,{0},0};
+    out=Key{KT_SHORTCUT,code,mods,{0},{0},0};
     return true;
   }
-  // t=='S' secuencia: "c1 c2 ..." (codigos en HEX, ej "1B 18 10 04 28")
-  Key r=Key{KT_SEQ,0,0,{0},0};
+  // t=='S' secuencia: pasos "mods:code" o "code" (codigos en HEX, ej "2:B 12 10 4 28")
+  Key r=Key{KT_SEQ,0,0,{0},{0},0};
   uint8_t n=0;
   while(*p&&*p!='|') {
     while(*p&&*p==' ') p++;
     if(!*p||*p=='|') break;
-    uint16_t c=(uint16_t)strtol(p,(char**)&p,16);   // base 16 (hex)
-    if (n<SEQ_MAX) r.seq[n++]=(uint8_t)c;
+    uint8_t m=0;
+    // si el token tiene forma "M:C" (mods hex + ':' + code hex)
+    const char* save=p;
+    uint16_t first=(uint16_t)strtol(p,(char**)&p,16);
+    if (*p==':' && first<16) { m=(uint8_t)first; p++; }
+    else { p=save; }  // sin mods, releer desde el inicio
+    uint16_t c=(uint16_t)strtol(p,(char**)&p,16);
+    if (n<SEQ_MAX) { r.seq[n]= (uint8_t)c; r.seqMods[n]=m; n++; }
     while(*p&&*p!=' '&&*p!='|') p++;
   }
   r.seqLen=n;

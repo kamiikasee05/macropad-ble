@@ -248,9 +248,18 @@
 </div>
 <!-- Secuencia (solo Seq) -->
 <div id="seq-box" class="hidden">
-<label class="block font-label-mono text-label-mono text-on-surface-variant mb-2">Secuencia (keycodes hex)</label>
-<input type="text" class="w-full bg-surface border border-outline-variant rounded p-3 text-on-surface font-label-mono focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim shadow-[inset_0_2px_5px_rgba(0,0,0,0.3)]" id="seq-input" placeholder="1B 18 10 04 28"/>
-<div class="mt-2 font-label-mono text-label-mono text-on-surface-variant opacity-70" id="seq-preview"></div>
+<label class="block font-label-mono text-label-mono text-on-surface-variant mb-2">Secuencia de teclas</label>
+<div class="flex gap-2 mb-2">
+<input type="text" class="flex-1 bg-surface border border-outline-variant rounded p-3 text-on-surface font-label-mono focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim shadow-[inset_0_2px_5px_rgba(0,0,0,0.3)]" id="seq-input" placeholder="Escribí el texto... (ej: Hola, como estas?)"/>
+<button class="px-4 py-2 bg-surface-container-high border border-outline-variant/50 rounded text-primary-fixed-dim font-label-mono hover:bg-surface-variant text-sm whitespace-nowrap" id="seq-add">Agregar</button>
+</div>
+<div class="flex gap-2 mb-3">
+<select class="flex-1 bg-surface border border-outline-variant rounded p-2 text-on-surface font-label-mono focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim shadow-[inset_0_2px_5px_rgba(0,0,0,0.3)] appearance-none text-sm" id="seq-special"></select>
+<button class="px-4 py-2 bg-surface-container-high border border-outline-variant/50 rounded text-secondary-fixed-dim font-label-mono hover:bg-surface-variant text-sm whitespace-nowrap" id="seq-add-special">+ Tecla</button>
+</div>
+<!-- Chips de pasos -->
+<div class="flex flex-wrap gap-2 mb-2" id="seq-chips"></div>
+<div class="mt-1 font-label-mono text-label-mono text-on-surface-variant opacity-70" id="seq-preview"></div>
 </div>
 </div>
 <div class="mt-6 pt-4 border-t border-outline-variant/30 flex justify-end">
@@ -281,6 +290,35 @@
         ];
         const MODS = [
             {n:"Ctrl",b:1},{n:"Shift",b:2},{n:"Alt",b:4},{n:"Win",b:8}
+        ];
+
+        // ==================== TEXTO -> KEYCODES HID ====================
+        // Mapa: caracter -> {c: keycode HID, m: mods} (mayusculas/simbolos = shift)
+        // Codigos HID estandar: a=4..z=29, 1=30..0=39, Enter=40, Tab=43, Espacio=44
+        const CHAR_MAP = {
+            "a":{c:4},"b":{c:5},"c":{c:6},"d":{c:7},"e":{c:8},"f":{c:9},"g":{c:10},"h":{c:11},
+            "i":{c:12},"j":{c:13},"k":{c:14},"l":{c:15},"m":{c:16},"n":{c:17},"o":{c:18},"p":{c:19},
+            "q":{c:20},"r":{c:21},"s":{c:22},"t":{c:23},"u":{c:24},"v":{c:25},"w":{c:26},"x":{c:27},
+            "y":{c:28},"z":{c:29},
+            "1":{c:30},"2":{c:31},"3":{c:32},"4":{c:33},"5":{c:34},"6":{c:35},"7":{c:36},"8":{c:37},"9":{c:38},"0":{c:39},
+            "-":{c:45},"=":{c:46},"[":{c:47},"]":{c:48},"\\":{c:49},";":{c:51},"'":{c:52},"`":{c:53},
+            ",":{c:54},".":{c:55},"/":{c:56},
+            " ": {c:44},
+            // Mayusculas y simbolos con shift
+            "A":{c:4,m:2},"B":{c:5,m:2},"C":{c:6,m:2},"D":{c:7,m:2},"E":{c:8,m:2},"F":{c:9,m:2},"G":{c:10,m:2},"H":{c:11,m:2},
+            "I":{c:12,m:2},"J":{c:13,m:2},"K":{c:14,m:2},"L":{c:15,m:2},"M":{c:16,m:2},"N":{c:17,m:2},"O":{c:18,m:2},"P":{c:19,m:2},
+            "Q":{c:20,m:2},"R":{c:21,m:2},"S":{c:22,m:2},"T":{c:23,m:2},"U":{c:24,m:2},"V":{c:25,m:2},"W":{c:26,m:2},"X":{c:27,m:2},
+            "Y":{c:28,m:2},"Z":{c:29,m:2},
+            "!":{c:30,m:2},"@":{c:31,m:2},"#":{c:32,m:2},"$":{c:33,m:2},"%":{c:34,m:2},"^":{c:35,m:2},"&":{c:36,m:2},"*":{c:37,m:2},"(":{c:38,m:2},")":{c:39,m:2},
+            "_":{c:45,m:2},"+":{c:46,m:2},"{":{c:47,m:2},"}":{c:48,m:2},"|":{c:49,m:2},":":{c:51,m:2},"\"":{c:52,m:2},"~":{c:53,m:2},
+            "<":{c:54,m:2},">":{c:55,m:2},"?":{c:56,m:2}
+        };
+        // Teclas especiales para agregar a la secuencia
+        const SPECIAL_KEYS = [
+            {n:"Enter",c:40},{n:"Esc",c:41},{n:"Backspace",c:42},{n:"Tab",c:43},{n:"Espacio",c:44},
+            {n:"Caps Lock",c:57},{n:"Insert",c:73},{n:"Home",c:74},{n:"PageUp",c:75},{n:"Supr",c:76},{n:"Fin",c:77},{n:"PageDown",c:78},
+            {n:"→",c:79},{n:"←",c:80},{n:"↓",c:81},{n:"↑",c:82},
+            {n:"F1",c:58},{n:"F2",c:59},{n:"F3",c:60},{n:"F4",c:61},{n:"F5",c:62},{n:"F6",c:63},{n:"F7",c:64},{n:"F8",c:65},{n:"F9",c:66},{n:"F10",c:67},{n:"F11",c:68},{n:"F12",c:69}
         ];
 
         // ==================== BLE ====================
@@ -314,7 +352,7 @@
             if(k.K) return "K:"+k.c;
             if(k.M) return "M:"+k.c;
             if(k.A) return "A:"+k.mods+":"+k.c;
-            if(k.S) return "S:"+k.seq.map(x=>x.toString(16).toUpperCase()).join(" ");
+            if(k.S) return "S:"+k.seq.map(x => x.m ? (x.m.toString(16).toUpperCase()+":"+x.c.toString(16).toUpperCase()) : x.c.toString(16).toUpperCase()).join(" ");
             return "N";
         }
         function keyLabel(k){
@@ -325,7 +363,17 @@
                 const mods = MODS.filter(m=>k.mods&m.b).map(m=>m.n).join("+");
                 return (mods?mods+"+":"") + (nameOf(KEYS, k.c) || ("#"+k.c));
             }
-            if(k.S) return "Seq("+k.seq.length+")";
+            if(k.S){
+                // Mostrar los pasos como texto: caracteres normales + teclas especiales entre <>
+                let s = "";
+                for(const step of (k.seq||[])){
+                    if(step.special) s += "<"+step.special+">";
+                    else if(step.m && step.char) s += step.char;   // char ya incluye la mayuscula
+                    else if(step.char) s += step.char;
+                    else if(step.special) s += "<"+step.special+">";
+                }
+                return s || "Sec";
+            }
             return "?";
         }
         function nameOf(arr, code){ const f = arr.find(x=>x.c===code); return f ? f.n : null; }
@@ -396,10 +444,11 @@
             codeBox.classList.remove('hidden');
             // seq
             const seqBox = document.getElementById('seq-box');
-            const seqInput = document.getElementById('seq-input');
             seqBox.classList.toggle('hidden', t!=="S");
-            seqInput.value = (t==="S") ? (k.seq||[]).map(x=>x.toString(16).toUpperCase()).join(" ") : "";
-            updateSeqPreview();
+            if(t==="S"){
+                seqInput.value = "";
+                renderSeqChips(); updateSeqPreview();
+            }
             if(t==="S") codeBox.classList.add('hidden');
             drawer.classList.remove('drawer-closed');
             drawer.classList.add('drawer-open');
@@ -441,18 +490,76 @@
             });
         });
 
+        // ==================== SECUENCIA (texto + teclas especiales) ====================
+        // k.seq = array de pasos: {c, m?, char?, special?}
+        //   - paso de texto: {c: keycode, m: mods(opcional), char: "a"|"A"}
+        //   - paso especial: {c: keycode, special: "Enter"|"Tab"|...}
         const seqInput = document.getElementById('seq-input');
-        function updateSeqPreview(){
-            const raw = seqInput.value;
-            const parts = raw.trim().split(/\s+/).filter(Boolean);
-            const names = parts.map(p => { const v = parseInt(p,16); return nameOf(KEYS, v) || ("0x"+p.toUpperCase()); });
-            document.getElementById('seq-preview').textContent = names.length ? names.join(" · ") : "";
+        const seqSpecial = document.getElementById('seq-special');
+        const seqChips = document.getElementById('seq-chips');
+        const seqPreview = document.getElementById('seq-preview');
+
+        // Llenar el select de teclas especiales
+        seqSpecial.innerHTML = SPECIAL_KEYS.map(x=>`<option value="${x.c}">${x.n}</option>`).join("");
+
+        // Convertir un string a pasos de secuencia (caracter por caracter)
+        function textToSteps(text){
+            const steps = [];
+            for(const ch of text){
+                const map = CHAR_MAP[ch];
+                if(map) steps.push({c:map.c, m:map.m||0, char:ch});
+                // si no esta en el mapa, ignorar (no se puede tipear)
+            }
+            return steps;
         }
-        seqInput.addEventListener('input', () => {
-            const raw = seqInput.value;
-            const seq = raw.trim().split(/\s+/).filter(Boolean).map(p => parseInt(p,16)).filter(n => !isNaN(n));
-            macData[editingIdx] = {S:true, seq};
-            updateSeqPreview();
+
+        function renderSeqChips(){
+            const k = macData[editingIdx];
+            const steps = (k && k.S) ? k.seq : [];
+            seqChips.innerHTML = "";
+            steps.forEach((step, i) => {
+                const chip = document.createElement('span');
+                chip.className = 'inline-flex items-center gap-1 bg-surface-container border border-outline-variant/50 rounded px-2 py-1 font-label-mono text-label-mono text-on-surface';
+                const label = step.special ? ("<"+step.special+">") : (step.char || ("0x"+step.c.toString(16).toUpperCase()));
+                chip.innerHTML = `<span>${label}</span><button class="text-on-surface-variant hover:text-error transition-colors" data-rm="${i}">✕</button>`;
+                seqChips.appendChild(chip);
+            });
+            seqChips.querySelectorAll('[data-rm]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const i = parseInt(btn.dataset.rm);
+                    macData[editingIdx].seq.splice(i, 1);
+                    renderSeqChips(); updateSeqPreview();
+                });
+            });
+        }
+
+        function updateSeqPreview(){
+            const k = macData[editingIdx];
+            const steps = (k && k.S) ? k.seq : [];
+            seqPreview.textContent = steps.length
+                ? "→ " + steps.map(s => s.special ? ("<"+s.special+">") : (s.char||"")).join("")
+                : "";
+        }
+
+        // Agregar texto al final de la secuencia
+        document.getElementById('seq-add').addEventListener('click', () => {
+            const text = seqInput.value;
+            if(!text) return;
+            if(!macData[editingIdx].S) macData[editingIdx] = {S:true, seq:[]};
+            macData[editingIdx].seq.push(...textToSteps(text));
+            seqInput.value = "";
+            renderSeqChips(); updateSeqPreview();
+        });
+        seqInput.addEventListener('keydown', e => {
+            if(e.key === "Enter"){ e.preventDefault(); document.getElementById('seq-add').click(); }
+        });
+
+        // Agregar tecla especial
+        document.getElementById('seq-add-special').addEventListener('click', () => {
+            const c = parseInt(seqSpecial.value);
+            if(!macData[editingIdx].S) macData[editingIdx] = {S:true, seq:[]};
+            macData[editingIdx].seq.push({c, special: SPECIAL_KEYS.find(x=>x.c===c).n});
+            renderSeqChips(); updateSeqPreview();
         });
 
         document.getElementById('btn-apply').addEventListener('click', () => {
@@ -526,7 +633,24 @@
                 else if(t==="K") macData[i] = {K:true, c:parseInt(parts[1])};
                 else if(t==="M") macData[i] = {M:true, c:parseInt(parts[1])};
                 else if(t==="A") macData[i] = {A:true, mods:parseInt(parts[1]), c:parseInt(parts[2])};
-                else if(t==="S") macData[i] = {S:true, seq:(parts[1]||"").trim().split(/\s+/).filter(Boolean).map(x=>parseInt(x,16))};
+                else if(t==="S"){
+                    // pasos separados por espacio; cada paso "mods:code" (hex) o "code" (hex)
+                    const steps = (parts[1]||"").trim().split(/\s+/).filter(Boolean).map(tok => {
+                        const sep = tok.indexOf(':');
+                        if(sep >= 0){
+                            const m = parseInt(tok.slice(0,sep),16);
+                            const c = parseInt(tok.slice(sep+1),16);
+                            return {c, m: m||0};
+                        }
+                        return {c: parseInt(tok,16), m:0};
+                    });
+                    // Reconstruir el char cuando es una tecla simple (para mostrar en el grid)
+                    steps.forEach(s => {
+                        const ch = Object.keys(CHAR_MAP).find(k => CHAR_MAP[k].c===s.c && (CHAR_MAP[k].m||0)===s.m);
+                        if(ch) s.char = ch;
+                    });
+                    macData[i] = {S:true, seq:steps};
+                }
                 else macData[i] = {N:true};
             }
             renderGrid();
