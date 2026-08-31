@@ -13,6 +13,9 @@
 *.bak
 *.bak-*
 
+# Pagina de prueba local (web app de dev)
+test-app/
+
 # OS
 .DS_Store
 Thumbs.db
