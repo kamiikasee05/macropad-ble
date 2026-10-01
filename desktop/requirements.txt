@@ -1,0 +1,10 @@
+bleak>=0.22
+pystray>=0.19
+Pillow>=10.0
+fastapi>=0.103
+uvicorn>=0.23
+
+# Opcional (solo para empaquetar):
+#   pip install pyinstaller
+#   pyinstaller --noconfirm --windowed --name MacropadFX \
+#     --add-data "static;static" tray.py

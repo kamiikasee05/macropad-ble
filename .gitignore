@@ -23,3 +23,11 @@ stitch_output/
 # OS
 .DS_Store
 Thumbs.db
+
+# Desktop (Python / PyInstaller)
+# Nota: MacropadFX.spec SI se versiona (no ignorar *.spec).
+__pycache__/
+*.pyc
+desktop/build/
+desktop/dist/
+desktop/profiles.json

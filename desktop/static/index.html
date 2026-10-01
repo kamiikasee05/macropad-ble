@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MacropadFX - Panel de Control</title>
+<link href="/favicon.ico" rel="icon"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed-variant": "#74009f",
+                        "on-secondary-fixed": "#320047",
+                        "on-primary-container": "#006a71",
+                        "error": "#ffb4ab",
+                        "inverse-on-surface": "#2d3137",
+                        "primary": "#e1fdff",
+                        "surface-container-low": "#181c22",
+                        "on-primary-fixed": "#002022",
+                        "surface-container-high": "#262a31",
+                        "on-surface": "#dfe2eb",
+                        "outline": "#849495",
+                        "inverse-primary": "#00696f",
+                        "on-primary": "#00363a",
+                        "inverse-surface": "#dfe2eb",
+                        "on-surface-variant": "#b9cacb",
+                        "primary-fixed-dim": "#00dbe7",
+                        "on-primary-fixed-variant": "#004f54",
+                        "secondary-container": "#ce5dff",
+                        "on-secondary-container": "#480064",
+                        "secondary-fixed-dim": "#ebb2ff",
+                        "outline-variant": "#3a494b",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#095300",
+                        "tertiary-fixed-dim": "#2ae500",
+                        "on-secondary": "#520071",
+                        "tertiary-fixed": "#79ff5b",
+                        "on-error": "#690005",
+                        "secondary": "#ebb2ff",
+                        "primary-fixed": "#74f5ff",
+                        "background": "#10141a",
+                        "on-tertiary-container": "#106f00",
+                        "tertiary": "#e4ffd6",
+                        "surface-container": "#1c2026",
+                        "surface-tint": "#00dbe7",
+                        "error-container": "#93000a",
+                        "surface-variant": "#31353c",
+                        "on-background": "#dfe2eb",
+                        "on-tertiary": "#053900",
+                        "surface": "#10141a",
+                        "on-tertiary-fixed": "#022100",
+                        "secondary-fixed": "#f8d8ff",
+                        "surface-bright": "#353940",
+                        "surface-container-highest": "#31353c",
+                        "primary-container": "#00f2ff",
+                        "surface-dim": "#10141a",
+                        "tertiary-container": "#34fc0d",
+                        "surface-container-lowest": "#0a0e14"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        margin: "24px",
+                        gutter: "16px",
+                        unit: "4px",
+                        "container-max": "1280px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Inter"],
+                        "label-mono": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    fontSize: {
+                        "body-md": ["16px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "label-mono": ["14px", { lineHeight: "1.4", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "1.3", fontWeight: "700" }],
+                        "headline-lg": ["40px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "800" }],
+                        "label-caps": ["12px", { lineHeight: "1.2", letterSpacing: "0.1em", fontWeight: "900" }]
+                    },
+                    boxShadow: {
+                        'keycap': 'inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 0 #181c22, 0 6px 15px rgba(0,0,0,0.5)',
+                        'keycap-active': 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 0 #181c22, 0 2px 5px rgba(0,0,0,0.5)',
+                        'glow-cyan': '0 0 15px 2px rgba(0, 219, 231, 0.3)',
+                        'glow-purple': '0 0 15px 2px rgba(235, 178, 255, 0.3)',
+                        'glow-green': '0 0 15px 2px rgba(42, 229, 0, 0.3)',
+                        'glow-orange': '0 0 15px 2px rgba(255, 165, 0, 0.3)',
+                        'glow-primary': '0 0 20px rgba(0, 219, 231, 0.2)',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #0a0e14; }
+
+        .keycap {
+            background: linear-gradient(180deg, #262a31 0%, #1c2026 100%);
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .keycap:active, .keycap.sim-active {
+            transform: translateY(3px);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 0 #181c22, 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .type-hid { border-bottom: 2px solid #00dbe7; }
+        .type-shortcut { border-bottom: 2px solid #ebb2ff; }
+        .type-media { border-bottom: 2px solid #2ae500; }
+        .type-sequence { border-bottom: 2px solid #ffa500; }
+
+        .drawer-open { transform: translateX(0); }
+        .drawer-closed { transform: translateX(100%); }
+
+        @keyframes pulse-led {
+            0% { opacity: 0.5; box-shadow: 0 0 5px currentColor; }
+            50% { opacity: 1; box-shadow: 0 0 15px currentColor; }
+            100% { opacity: 0.5; box-shadow: 0 0 5px currentColor; }
+        }
+        .led-active { animation: pulse-led 2s infinite ease-in-out; }
+
+        select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23849495' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+        }
+        .log-box { scrollbar-width: thin; scrollbar-color: #3a494b transparent; }
+        .log-box::-webkit-scrollbar { width: 6px; }
+        .log-box::-webkit-scrollbar-thumb { background: #3a494b; border-radius: 3px; }
+        .profiles-box { scrollbar-width: thin; scrollbar-color: #3a494b transparent; }
+        .profiles-box::-webkit-scrollbar { width: 6px; }
+        .profiles-box::-webkit-scrollbar-thumb { background: #3a494b; border-radius: 3px; }
+    </style>
+</head>
+<body class="text-on-surface font-body-md overflow-hidden flex flex-col h-screen">
+<!-- TopNavBar -->
+<header class="bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_4px_20px_rgba(0,219,231,0.1)] z-50 full-width top-0">
+<div class="flex justify-between items-center w-full px-margin py-4 max-w-container-max mx-auto">
+<div class="font-headline-lg text-headline-lg font-black text-primary-fixed-dim tracking-tighter uppercase">
+                MacropadFX
+            </div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-3 bg-surface-container-high hover:bg-surface-variant/50 transition-all duration-300 px-6 py-2 rounded border border-outline-variant/50 text-on-surface active:scale-95" id="btn-connect">
+<span class="font-label-mono text-label-mono" id="connect-label">CONECTAR DISPOSITIVO</span>
+<div class="w-3 h-3 rounded-full bg-error text-error led-active" id="status-led"></div>
+</button>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative w-full max-w-container-max mx-auto">
+<!-- Main Canvas -->
+<main class="flex-1 flex flex-col items-center p-8 pt-6 relative overflow-y-auto">
+<div class="bg-surface-container-low/50 backdrop-blur-md p-12 rounded-xl border border-outline-variant/20 shadow-2xl relative">
+<!-- PCB Decor -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle at 2px 2px, #fff 1px, transparent 0); background-size: 20px 20px;"></div>
+<!-- 4x4 Grid -->
+<div class="grid grid-cols-4 gap-6 relative z-10" id="keypad-grid">
+<!-- Generado via JS -->
+</div>
+</div>
+<!-- Bottom Actions -->
+<div class="mt-8 flex gap-6">
+<button class="px-8 py-3 bg-surface-container-high border border-outline-variant/50 rounded text-on-surface font-label-mono hover:bg-surface-variant shadow-glow-primary hover:shadow-[0_0_25px_rgba(0,219,231,0.4)] transition-all active:scale-95" id="btn-get">
+                    CARGAR (GET)
+                </button>
+<button class="px-8 py-3 bg-primary-fixed-dim/10 border border-primary-fixed-dim rounded text-primary-fixed-dim font-label-mono hover:bg-primary-fixed-dim/20 shadow-glow-primary hover:shadow-[0_0_25px_rgba(0,219,231,0.6)] transition-all active:scale-95" id="btn-set">
+                    GUARDAR (SETL)
+                </button>
+<button class="px-8 py-3 bg-surface-container-high border border-error/50 rounded text-error font-label-mono hover:bg-error/10 hover:shadow-[0_0_25px_rgba(255,180,171,0.4)] transition-all active:scale-95" id="btn-reset">
+                    RESETEAR
+                </button>
+</div>
+<!-- Log -->
+<div class="mt-6 w-full max-w-2xl">
+<div class="log-box bg-surface-container-low/60 backdrop-blur-md border border-outline-variant/20 rounded-xl px-4 py-3 h-24 overflow-y-auto font-label-mono text-label-mono text-on-surface-variant" id="log"></div>
+</div>
+<!-- Perfiles -->
+<div class="mt-6 mb-8 w-full max-w-2xl bg-surface-container-low/60 backdrop-blur-md border border-outline-variant/20 rounded-xl p-4">
+<div class="flex items-center justify-between mb-3">
+<h3 class="font-label-mono text-label-mono text-on-surface-variant">PERFILES</h3>
+<span class="font-label-mono text-[10px] text-on-surface-variant opacity-60" id="profiles-path"></span>
+</div>
+<div class="flex gap-2 mb-3">
+<input class="flex-1 bg-surface border border-outline-variant rounded p-2 text-on-surface font-label-mono text-sm focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim shadow-[inset_0_2px_5px_rgba(0,0,0,0.3)]" id="profile-name" placeholder="Nombre del perfil..." type="text"/>
+<button class="px-4 py-2 bg-primary-fixed-dim/10 border border-primary-fixed-dim rounded text-primary-fixed-dim font-label-mono hover:bg-primary-fixed-dim/20 text-sm whitespace-nowrap transition-colors" id="btn-profile-save">Guardar actual</button>
+</div>
+<div class="profiles-box space-y-2 max-h-40 overflow-y-auto" id="profiles-list"></div>
+</div>
+</main>
+<!-- Right Editor Drawer -->
+<aside class="absolute right-0 top-0 h-full w-96 bg-surface-container-high/95 backdrop-blur-xl border-l border-outline-variant/30 shadow-[-10px_0_30px_rgba(0,0,0,0.5)] drawer-closed transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-40 flex flex-col p-6" id="editor-drawer">
+<div class="flex justify-between items-center mb-8">
+<h2 class="font-headline-md text-headline-md text-on-surface" id="editor-title">Editar Tecla --</h2>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-full hover:bg-surface-variant" id="btn-close-drawer">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="space-y-6 flex-1 overflow-y-auto pr-2">
+<!-- Type Selection -->
+<div>
+<label class="block font-label-mono text-label-mono text-on-surface-variant mb-3">Tipo de Acción</label>
+<div class="grid grid-cols-5 gap-2">
+<button class="type-btn flex flex-col items-center gap-2 p-2 rounded border border-outline-variant bg-surface hover:border-primary-fixed-dim transition-colors" data-type="none">
+<span class="material-symbols-outlined text-on-surface-variant">block</span>
+<span class="text-[10px] font-label-mono text-on-surface-variant">None</span>
+</button>
+<button class="type-btn flex flex-col items-center gap-2 p-2 rounded border border-primary-fixed-dim bg-primary-fixed-dim/10 transition-colors" data-type="hid">
+<span class="material-symbols-outlined text-primary-fixed-dim">keyboard</span>
+<span class="text-[10px] font-label-mono text-primary-fixed-dim">HID</span>
+</button>
+<button class="type-btn flex flex-col items-center gap-2 p-2 rounded border border-outline-variant bg-surface hover:border-tertiary-fixed-dim transition-colors" data-type="media">
+<span class="material-symbols-outlined text-on-surface-variant">play_arrow</span>
+<span class="text-[10px] font-label-mono text-on-surface-variant">Media</span>
+</button>
+<button class="type-btn flex flex-col items-center gap-2 p-2 rounded border border-outline-variant bg-surface hover:border-secondary-fixed-dim transition-colors" data-type="shortcut">
+<span class="material-symbols-outlined text-on-surface-variant">bolt</span>
+<span class="text-[10px] font-label-mono text-on-surface-variant">Atajo</span>
+</button>
+<button class="type-btn flex flex-col items-center gap-2 p-2 rounded border border-outline-variant bg-surface hover:border-orange-400 transition-colors" data-type="sequence">
+<span class="material-symbols-outlined text-on-surface-variant">format_list_numbered</span>
+<span class="text-[10px] font-label-mono text-on-surface-variant">Seq</span>
+</button>
+</div>
+</div>
+<!-- Modifiers (solo Atajo) -->
+<div id="mods-box" class="p-4 bg-surface rounded border border-outline-variant/30 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] hidden">
+<label class="block font-label-mono text-label-mono text-on-surface-variant mb-3">Modificadores</label>
+<div class="flex flex-wrap gap-3">
+<label class="flex items-center gap-2 cursor-pointer group">
+<input class="form-checkbox bg-surface-container border-outline-variant text-primary-fixed-dim rounded focus:ring-primary-fixed-dim focus:ring-offset-surface" type="checkbox" data-mod="1"/>
+<span class="font-label-mono text-sm text-on-surface group-hover:text-primary-fixed-dim transition-colors">Ctrl</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer group">
+<input class="form-checkbox bg-surface-container border-outline-variant text-primary-fixed-dim rounded focus:ring-primary-fixed-dim focus:ring-offset-surface" type="checkbox" data-mod="2"/>
+<span class="font-label-mono text-sm text-on-surface group-hover:text-primary-fixed-dim transition-colors">Shift</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer group">
+<input class="form-checkbox bg-surface-container border-outline-variant text-primary-fixed-dim rounded focus:ring-primary-fixed-dim focus:ring-offset-surface" type="checkbox" data-mod="4"/>
+<span class="font-label-mono text-sm text-on-surface group-hover:text-primary-fixed-dim transition-colors">Alt</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer group">
+<input class="form-checkbox bg-surface-container border-outline-variant text-primary-fixed-dim rounded focus:ring-primary-fixed-dim focus:ring-offset-surface" type="checkbox" data-mod="8"/>
+<span class="font-label-mono text-sm text-on-surface group-hover:text-primary-fixed-dim transition-colors">Win</span>
+</label>
+</div>
+</div>
+<!-- Keycode Dropdown -->
+<div id="code-box">
+<label class="block font-label-mono text-label-mono text-on-surface-variant mb-2" id="code-label">Keycode Base</label>
+<select class="w-full bg-surface border border-outline-variant rounded p-3 text-on-surface font-label-mono focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim shadow-[inset_0_2px_5px_rgba(0,0,0,0.3)] appearance-none" id="code-select"></select>
+</div>
+<!-- Secuencia (solo Seq) -->
+<div id="seq-box" class="hidden">
+<label class="block font-label-mono text-label-mono text-on-surface-variant mb-2">Secuencia de teclas</label>
+<div class="flex gap-2 mb-2">
+<input type="text" class="flex-1 bg-surface border border-outline-variant rounded p-3 text-on-surface font-label-mono focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim shadow-[inset_0_2px_5px_rgba(0,0,0,0.3)]" id="seq-input" placeholder="Escribí el texto... (ej: Hola, como estas?)"/>
+<button class="px-4 py-2 bg-surface-container-high border border-outline-variant/50 rounded text-primary-fixed-dim font-label-mono hover:bg-surface-variant text-sm whitespace-nowrap" id="seq-add">Agregar</button>
+</div>
+<div class="flex gap-2 mb-3">
+<select class="flex-1 bg-surface border border-outline-variant rounded p-2 text-on-surface font-label-mono focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim shadow-[inset_0_2px_5px_rgba(0,0,0,0.3)] appearance-none text-sm" id="seq-special"></select>
+<button class="px-4 py-2 bg-surface-container-high border border-outline-variant/50 rounded text-secondary-fixed-dim font-label-mono hover:bg-surface-variant text-sm whitespace-nowrap" id="seq-add-special">+ Tecla</button>
+</div>
+<!-- Chips de pasos -->
+<div class="flex flex-wrap gap-2 mb-2" id="seq-chips"></div>
+<div class="mt-1 font-label-mono text-label-mono text-on-surface-variant opacity-70" id="seq-preview"></div>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-outline-variant/30 flex justify-end">
+<button class="px-6 py-2 bg-primary-fixed-dim/20 text-primary-fixed-dim font-label-mono rounded border border-primary-fixed-dim hover:bg-primary-fixed-dim/30 transition-colors" id="btn-apply">
+                    Aplicar
+                </button>
+</div>
+</aside>
+</div>
+<script>
+        // ==================== CATALOGO DE KEYCODES (HID) ====================
+        const KEYS = [
+            {n:"A",c:4},{n:"B",c:5},{n:"C",c:6},{n:"D",c:7},{n:"E",c:8},{n:"F",c:9},{n:"G",c:10},{n:"H",c:11},
+            {n:"I",c:12},{n:"J",c:13},{n:"K",c:14},{n:"L",c:15},{n:"M",c:16},{n:"N",c:17},{n:"O",c:18},{n:"P",c:19},
+            {n:"Q",c:20},{n:"R",c:21},{n:"S",c:22},{n:"T",c:23},{n:"U",c:24},{n:"V",c:25},{n:"W",c:26},{n:"X",c:27},
+            {n:"Y",c:28},{n:"Z",c:29},
+            {n:"1",c:30},{n:"2",c:31},{n:"3",c:32},{n:"4",c:33},{n:"5",c:34},{n:"6",c:35},{n:"7",c:36},{n:"8",c:37},{n:"9",c:38},{n:"0",c:39},
+            {n:"Enter",c:40},{n:"Esc",c:41},{n:"Backspace",c:42},{n:"Tab",c:43},{n:"Espacio",c:44},
+            {n:"-",c:45},{n:"=",c:46},{n:"[",c:47},{n:"]",c:48},{n:"\\",c:49},{n:";",c:51},{n:"'",c:52},{n:"`",c:53},{n:",",c:54},{n:".",c:55},{n:"/",c:56},
+            {n:"Caps Lock",c:57},{n:"F1",c:58},{n:"F2",c:59},{n:"F3",c:60},{n:"F4",c:61},{n:"F5",c:62},{n:"F6",c:63},{n:"F7",c:64},{n:"F8",c:65},{n:"F9",c:66},{n:"F10",c:67},{n:"F11",c:68},{n:"F12",c:69},
+            {n:"PrtSc",c:70},{n:"Scroll Lock",c:71},{n:"Pausa",c:72},{n:"Insert",c:73},{n:"Home",c:74},{n:"PageUp",c:75},{n:"Supr",c:76},{n:"Fin",c:77},{n:"PageDown",c:78},
+            {n:"→",c:79},{n:"←",c:80},{n:"↓",c:81},{n:"↑",c:82},
+            {n:"Num Lock",c:83},{n:"F13",c:104},{n:"F14",c:105},{n:"F15",c:106},{n:"F16",c:107},{n:"F17",c:108},{n:"F18",c:109},{n:"F19",c:110},{n:"F20",c:111},{n:"F21",c:112},{n:"F22",c:113},{n:"F23",c:114},{n:"F24",c:115}
+        ];
+        const MEDIA_KEYS = [
+            {n:"Play/Pausa",c:205},{n:"Siguiente",c:181},{n:"Anterior",c:182},{n:"Detener",c:183},{n:"Grabar",c:178},
+            {n:"Mute",c:226},{n:"Vol+",c:233},{n:"Vol-",c:234},{n:"Explorador",c:404},{n:"Calc",c:402},{n:"Mail",c:394},{n:"Sleep",c:50}
+        ];
+        const MODS = [
+            {n:"Ctrl",b:1},{n:"Shift",b:2},{n:"Alt",b:4},{n:"Win",b:8}
+        ];
+
+        // ==================== TEXTO -> KEYCODES HID ====================
+        // Mapa: caracter -> {c: keycode HID, m: mods} (mayusculas/simbolos = shift)
+        // Codigos HID estandar: a=4..z=29, 1=30..0=39, Enter=40, Tab=43, Espacio=44
+        const CHAR_MAP = {
+            "a":{c:4},"b":{c:5},"c":{c:6},"d":{c:7},"e":{c:8},"f":{c:9},"g":{c:10},"h":{c:11},
+            "i":{c:12},"j":{c:13},"k":{c:14},"l":{c:15},"m":{c:16},"n":{c:17},"o":{c:18},"p":{c:19},
+            "q":{c:20},"r":{c:21},"s":{c:22},"t":{c:23},"u":{c:24},"v":{c:25},"w":{c:26},"x":{c:27},
+            "y":{c:28},"z":{c:29},
+            "1":{c:30},"2":{c:31},"3":{c:32},"4":{c:33},"5":{c:34},"6":{c:35},"7":{c:36},"8":{c:37},"9":{c:38},"0":{c:39},
+            "-":{c:45},"=":{c:46},"[":{c:47},"]":{c:48},"\\":{c:49},";":{c:51},"'":{c:52},"`":{c:53},
+            ",":{c:54},".":{c:55},"/":{c:56},
+            " ": {c:44},
+            // Mayusculas y simbolos con shift
+            "A":{c:4,m:2},"B":{c:5,m:2},"C":{c:6,m:2},"D":{c:7,m:2},"E":{c:8,m:2},"F":{c:9,m:2},"G":{c:10,m:2},"H":{c:11,m:2},
+            "I":{c:12,m:2},"J":{c:13,m:2},"K":{c:14,m:2},"L":{c:15,m:2},"M":{c:16,m:2},"N":{c:17,m:2},"O":{c:18,m:2},"P":{c:19,m:2},
+            "Q":{c:20,m:2},"R":{c:21,m:2},"S":{c:22,m:2},"T":{c:23,m:2},"U":{c:24,m:2},"V":{c:25,m:2},"W":{c:26,m:2},"X":{c:27,m:2},
+            "Y":{c:28,m:2},"Z":{c:29,m:2},
+            "!":{c:30,m:2},"@":{c:31,m:2},"#":{c:32,m:2},"$":{c:33,m:2},"%":{c:34,m:2},"^":{c:35,m:2},"&":{c:36,m:2},"*":{c:37,m:2},"(":{c:38,m:2},")":{c:39,m:2},
+            "_":{c:45,m:2},"+":{c:46,m:2},"{":{c:47,m:2},"}":{c:48,m:2},"|":{c:49,m:2},":":{c:51,m:2},"\"":{c:52,m:2},"~":{c:53,m:2},
+            "<":{c:54,m:2},">":{c:55,m:2},"?":{c:56,m:2}
+        };
+        // Teclas especiales para agregar a la secuencia
+        const SPECIAL_KEYS = [
+            {n:"Enter",c:40},{n:"Esc",c:41},{n:"Backspace",c:42},{n:"Tab",c:43},{n:"Espacio",c:44},
+            {n:"Caps Lock",c:57},{n:"Insert",c:73},{n:"Home",c:74},{n:"PageUp",c:75},{n:"Supr",c:76},{n:"Fin",c:77},{n:"PageDown",c:78},
+            {n:"→",c:79},{n:"←",c:80},{n:"↓",c:81},{n:"↑",c:82},
+            {n:"F1",c:58},{n:"F2",c:59},{n:"F3",c:60},{n:"F4",c:61},{n:"F5",c:62},{n:"F6",c:63},{n:"F7",c:64},{n:"F8",c:65},{n:"F9",c:66},{n:"F10",c:67},{n:"F11",c:68},{n:"F12",c:69}
+        ];
+
+        // ==================== API (HTTP local) ====================
+        async function api(path, opts){
+            const res = await fetch(path, opts);
+            let data = null;
+            const ct = res.headers.get('content-type') || '';
+            if(ct.includes('application/json')){
+                try { data = await res.json(); } catch(e){ data = null; }
+            }
+            if(!res.ok){
+                const msg = (data && data.error) ? data.error : ('HTTP ' + res.status);
+                throw new Error(msg);
+            }
+            return data;
+        }
+        function apiJson(path, method, body){
+            return api(path, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+        }
+
+        // ==================== ESTADO ====================
+        // cada tecla: {N:true} | {K,c} | {M,c} | {A,mods,c} | {S,seq:[...]}
+        let macData = Array.from({length:16}, () => ({K:true, c:4}));
+        let editingIdx = null;
+        let connected = false;
+
+        const gridContainer = document.getElementById('keypad-grid');
+        const drawer = document.getElementById('editor-drawer');
+        const logEl = document.getElementById('log');
+        const statusLed = document.getElementById('status-led');
+        const connectLabel = document.getElementById('connect-label');
+        const btnConnect = document.getElementById('btn-connect');
+        const btnGet = document.getElementById('btn-get');
+        const btnSet = document.getElementById('btn-set');
+        const btnReset = document.getElementById('btn-reset');
+        const profilesList = document.getElementById('profiles-list');
+        const profilesPath = document.getElementById('profiles-path');
+        const profileName = document.getElementById('profile-name');
+
+        function log(m){ logEl.innerHTML += "&gt; " + escapeHtml(m) + "<br>"; logEl.scrollTop = logEl.scrollHeight; }
+        function setStatus(state){
+            // state: 'connected' | 'found' | 'off'
+            if(state === 'connected') statusLed.className = 'w-3 h-3 rounded-full led-active bg-tertiary-fixed-dim text-tertiary-fixed-dim shadow-glow-green';
+            else if(state === 'found') statusLed.className = 'w-3 h-3 rounded-full led-active bg-orange-400 text-orange-400';
+            else statusLed.className = 'w-3 h-3 rounded-full led-active bg-error text-error';
+        }
+        function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+        // ==================== SERIALIZACION ====================
+        function keyToString(k){
+            if(k.N) return "N";
+            if(k.K) return "K:"+k.c;
+            if(k.M) return "M:"+k.c;
+            if(k.A) return "A:"+k.mods+":"+k.c;
+            if(k.S) return "S:"+k.seq.map(x => x.m ? (x.m.toString(16).toUpperCase()+":"+x.c.toString(16).toUpperCase()) : x.c.toString(16).toUpperCase()).join(" ");
+            return "N";
+        }
+        function keyLabel(k){
+            if(k.N) return "—";
+            if(k.K) return nameOf(KEYS, k.c) || ("#"+k.c);
+            if(k.M) return nameOf(MEDIA_KEYS, k.c) || ("#"+k.c);
+            if(k.A){
+                const mods = MODS.filter(m=>k.mods&m.b).map(m=>m.n).join("+");
+                return (mods?mods+"+":"") + (nameOf(KEYS, k.c) || ("#"+k.c));
+            }
+            if(k.S){
+                // Mostrar los pasos como texto: caracteres normales + teclas especiales entre <>
+                let s = "";
+                for(const step of (k.seq||[])){
+                    if(step.special) s += "<"+step.special+">";
+                    else if(step.m && step.char) s += step.char;   // char ya incluye la mayuscula
+                    else if(step.char) s += step.char;
+                    else if(step.special) s += "<"+step.special+">";
+                }
+                return s || "Sec";
+            }
+            return "?";
+        }
+        function nameOf(arr, code){ const f = arr.find(x=>x.c===code); return f ? f.n : null; }
+        function typeOf(k){ return k.N?"N":(k.K?"K":(k.M?"M":(k.A?"A":"S"))); }
+        function typeClass(k){
+            const t = typeOf(k);
+            if(t==="K") return 'type-hid shadow-glow-cyan text-primary-fixed-dim';
+            if(t==="A") return 'type-shortcut shadow-glow-purple text-secondary-fixed-dim';
+            if(t==="M") return 'type-media shadow-glow-green text-tertiary-fixed-dim';
+            if(t==="S") return 'type-sequence shadow-glow-orange text-orange-400';
+            return 'opacity-40';
+        }
+
+        // ==================== RENDER GRID ====================
+        function renderGrid(){
+            gridContainer.innerHTML = "";
+            for(let i=0;i<16;i++){
+                const k = macData[i] || {N:true};
+                const btn = document.createElement('button');
+                btn.className = `keycap w-20 h-20 rounded-xl shadow-keycap flex flex-col items-center justify-center font-headline-md cursor-pointer ${typeClass(k)}`;
+                btn.dataset.index = i;
+                const small = document.createElement('span');
+                small.className = 'text-[9px] font-label-mono opacity-60';
+                small.textContent = 'K'+(i+1);
+                const main = document.createElement('span');
+                main.className = 'text-[13px] leading-tight px-1 text-center font-label-mono';
+                main.textContent = keyLabel(k);
+                btn.appendChild(small);
+                btn.appendChild(main);
+                btn.addEventListener('click', () => openEditor(i, btn));
+                gridContainer.appendChild(btn);
+            }
+        }
+
+        // ==================== EDITOR ====================
+        function openEditor(index, btnEl){
+            document.querySelectorAll('.keycap').forEach(b => b.classList.remove('ring-2', 'ring-white/50'));
+            btnEl.classList.add('ring-2', 'ring-white/50');
+            editingIdx = index;
+            document.getElementById('editor-title').textContent = "Editar Tecla K" + (index+1);
+            const k = macData[index];
+            // set type buttons
+            const t = typeOf(k);
+            document.querySelectorAll('.type-btn').forEach(b => {
+                const active = (b.dataset.type === (t==="N"?"none":t.toLowerCase()));
+                b.className = b.className.replace(/border-primary-fixed-dim|bg-primary-fixed-dim\/10|border-tertiary-fixed-dim|border-secondary-fixed-dim|border-orange-400/g, '');
+                if(t==="N") b.className = b.className.replace('border-outline-variant','border-outline-variant');
+                b.classList.toggle('border-primary-fixed-dim', active && t!=="M" && t!=="A" && t!=="S");
+                b.classList.toggle('bg-primary-fixed-dim/10', active && t!=="M" && t!=="A" && t!=="S");
+                b.classList.toggle('border-tertiary-fixed-dim', active && t==="M");
+                b.classList.toggle('border-secondary-fixed-dim', active && t==="A");
+                b.classList.toggle('border-orange-400', active && t==="S");
+            });
+            // mods checkboxes
+            const modsBox = document.getElementById('mods-box');
+            modsBox.classList.toggle('hidden', t!=="A");
+            document.querySelectorAll('input[data-mod]').forEach(cb => {
+                cb.checked = (t==="A") && ((k.mods||0) & parseInt(cb.dataset.mod)) ? true : false;
+            });
+            // code select
+            const codeBox = document.getElementById('code-box');
+            const codeSelect = document.getElementById('code-select');
+            const codeLabel = document.getElementById('code-label');
+            const arr = (t==="M") ? MEDIA_KEYS : KEYS;
+            codeSelect.innerHTML = arr.map(x=>`<option value="${x.c}">${x.n}</option>`).join("");
+            codeSelect.value = String((t==="K"||t==="A") ? k.c : (t==="M" ? k.c : arr[0].c));
+            codeLabel.textContent = (t==="M") ? "Acción Media" : "Keycode Base";
+            codeBox.classList.remove('hidden');
+            // seq
+            const seqBox = document.getElementById('seq-box');
+            seqBox.classList.toggle('hidden', t!=="S");
+            if(t==="S"){
+                seqInput.value = "";
+                renderSeqChips(); updateSeqPreview();
+            }
+            if(t==="S") codeBox.classList.add('hidden');
+            drawer.classList.remove('drawer-closed');
+            drawer.classList.add('drawer-open');
+        }
+
+        function currentType(){
+            const active = document.querySelector('.type-btn.border-primary-fixed-dim, .type-btn.border-tertiary-fixed-dim, .type-btn.border-secondary-fixed-dim, .type-btn.border-orange-400');
+            if(active) return active.dataset.type;
+            return 'hid';
+        }
+
+        document.querySelectorAll('.type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const t = btn.dataset.type;
+                const k = macData[editingIdx];
+                if(t==="none") macData[editingIdx] = {N:true};
+                else if(t==="hid") macData[editingIdx] = {K:true, c: (k.K?k.c:4)};
+                else if(t==="media") macData[editingIdx] = {M:true, c: (k.M?k.c:MEDIA_KEYS[0].c)};
+                else if(t==="shortcut") macData[editingIdx] = {A:true, mods: (k.A?k.mods:1), c: (k.A?k.c:4)};
+                else if(t==="sequence") macData[editingIdx] = {S:true, seq: (k.S?k.seq:[])};
+                openEditor(editingIdx, document.querySelector(`.keycap[data-index="${editingIdx}"]`));
+            });
+        });
+
+        document.getElementById('code-select').addEventListener('change', e => {
+            const c = parseInt(e.target.value);
+            const k = macData[editingIdx];
+            if(k.K) macData[editingIdx] = {K:true, c};
+            else if(k.M) macData[editingIdx] = {M:true, c};
+            else if(k.A) macData[editingIdx] = {A:true, mods:k.mods, c};
+        });
+
+        document.querySelectorAll('input[data-mod]').forEach(cb => {
+            cb.addEventListener('change', () => {
+                let m = 0;
+                document.querySelectorAll('input[data-mod]').forEach(c => { if(c.checked) m |= parseInt(c.dataset.mod); });
+                if(m===0) m = 1;
+                macData[editingIdx] = {A:true, mods:m, c: macData[editingIdx].c||4};
+            });
+        });
+
+        // ==================== SECUENCIA (texto + teclas especiales) ====================
+        // k.seq = array de pasos: {c, m?, char?, special?}
+        //   - paso de texto: {c: keycode, m: mods(opcional), char: "a"|"A"}
+        //   - paso especial: {c: keycode, special: "Enter"|"Tab"|...}
+        const seqInput = document.getElementById('seq-input');
+        const seqSpecial = document.getElementById('seq-special');
+        const seqChips = document.getElementById('seq-chips');
+        const seqPreview = document.getElementById('seq-preview');
+
+        // Llenar el select de teclas especiales
+        seqSpecial.innerHTML = SPECIAL_KEYS.map(x=>`<option value="${x.c}">${x.n}</option>`).join("");
+
+        // Convertir un string a pasos de secuencia (caracter por caracter)
+        function textToSteps(text){
+            const steps = [];
+            for(const ch of text){
+                const map = CHAR_MAP[ch];
+                if(map) steps.push({c:map.c, m:map.m||0, char:ch});
+                // si no esta en el mapa, ignorar (no se puede tipear)
+            }
+            return steps;
+        }
+
+        function renderSeqChips(){
+            const k = macData[editingIdx];
+            const steps = (k && k.S) ? k.seq : [];
+            seqChips.innerHTML = "";
+            steps.forEach((step, i) => {
+                const chip = document.createElement('span');
+                chip.className = 'inline-flex items-center gap-1 bg-surface-container border border-outline-variant/50 rounded px-2 py-1 font-label-mono text-label-mono text-on-surface';
+                const label = step.special ? ("<"+step.special+">") : (step.char || ("0x"+step.c.toString(16).toUpperCase()));
+                chip.innerHTML = `<span>${escapeHtml(label)}</span><button class="text-on-surface-variant hover:text-error transition-colors" data-rm="${i}">✕</button>`;
+                seqChips.appendChild(chip);
+            });
+            seqChips.querySelectorAll('[data-rm]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const i = parseInt(btn.dataset.rm);
+                    macData[editingIdx].seq.splice(i, 1);
+                    renderSeqChips(); updateSeqPreview();
+                });
+            });
+        }
+
+        function updateSeqPreview(){
+            const k = macData[editingIdx];
+            const steps = (k && k.S) ? k.seq : [];
+            seqPreview.textContent = steps.length
+                ? "→ " + steps.map(s => s.special ? ("<"+s.special+">") : (s.char||"")).join("")
+                : "";
+        }
+
+        // Agregar texto al final de la secuencia
+        document.getElementById('seq-add').addEventListener('click', () => {
+            const text = seqInput.value;
+            if(!text) return;
+            if(!macData[editingIdx].S) macData[editingIdx] = {S:true, seq:[]};
+            macData[editingIdx].seq.push(...textToSteps(text));
+            seqInput.value = "";
+            renderSeqChips(); updateSeqPreview();
+        });
+        seqInput.addEventListener('keydown', e => {
+            if(e.key === "Enter"){ e.preventDefault(); document.getElementById('seq-add').click(); }
+        });
+
+        // Agregar tecla especial
+        document.getElementById('seq-add-special').addEventListener('click', () => {
+            const c = parseInt(seqSpecial.value);
+            if(!macData[editingIdx].S) macData[editingIdx] = {S:true, seq:[]};
+            macData[editingIdx].seq.push({c, special: SPECIAL_KEYS.find(x=>x.c===c).n});
+            renderSeqChips(); updateSeqPreview();
+        });
+
+        document.getElementById('btn-apply').addEventListener('click', () => {
+            renderGrid();
+            drawer.classList.remove('drawer-open');
+            drawer.classList.add('drawer-closed');
+            document.querySelectorAll('.keycap').forEach(b => b.classList.remove('ring-2', 'ring-white/50'));
+        });
+
+        document.getElementById('btn-close-drawer').addEventListener('click', () => {
+            drawer.classList.remove('drawer-open');
+            drawer.classList.add('drawer-closed');
+            document.querySelectorAll('.keycap').forEach(b => b.classList.remove('ring-2', 'ring-white/50'));
+        });
+
+        // ==================== TRANSPORTE (HTTP /api) ====================
+        async function refreshStatus(){
+            try{
+                const st = await api('/api/status');
+                connected = !!st.connected;
+                if(connected){
+                    connectLabel.textContent = "DESCONECTAR";
+                    setStatus('connected');
+                } else {
+                    connectLabel.textContent = "CONECTAR DISPOSITIVO";
+                    setStatus(st.found ? 'found' : 'off');
+                }
+            } catch(e){
+                connected = false;
+                setStatus('off');
+            }
+        }
+
+        btnConnect.addEventListener('click', async () => {
+            try{
+                if(connected){
+                    log("Desconectando...");
+                    await api('/api/disconnect', {method:'POST'});
+                    log("Desconectado");
+                } else {
+                    log("Conectando (scan BLE)...");
+                    const st = await api('/api/connect', {method:'POST'});
+                    log("Conectado a " + (st.name||'MacropadFx') + " (" + (st.address||'') + ") ✓");
+                }
+            } catch(e){
+                log("Error de conexión: " + e.message);
+            }
+            await refreshStatus();
+        });
+
+        function parseMapLine(line){
+            const teclas = line.split('|');
+            macData = [];
+            for(let i=0;i<teclas.length;i++){
+                const parts = teclas[i].split(':');
+                const t = parts[0];
+                if(t==="N") macData[i] = {N:true};
+                else if(t==="K") macData[i] = {K:true, c:parseInt(parts[1])};
+                else if(t==="M") macData[i] = {M:true, c:parseInt(parts[1])};
+                else if(t==="A") macData[i] = {A:true, mods:parseInt(parts[1]), c:parseInt(parts[2])};
+                else if(t==="S"){
+                    // pasos separados por espacio; cada paso "mods:code" (hex) o "code" (hex)
+                    // OJO: NO usar parts[1] — el ':' de los modificadores (ej "S:2:B ...")
+                    // parte el string. Tomamos TODO lo que sigue al primer ':'.
+                    const stepsStr = parts.slice(1).join(':');
+                    const steps = stepsStr.trim().split(/\s+/).filter(Boolean).map(tok => {
+                        const sep = tok.indexOf(':');
+                        if(sep >= 0){
+                            const m = parseInt(tok.slice(0,sep),16);
+                            const c = parseInt(tok.slice(sep+1),16);
+                            return {c, m: m||0};
+                        }
+                        return {c: parseInt(tok,16), m:0};
+                    });
+                    // Reconstruir el char cuando es una tecla simple (para mostrar en el grid)
+                    steps.forEach(s => {
+                        const ch = Object.keys(CHAR_MAP).find(k => CHAR_MAP[k].c===s.c && (CHAR_MAP[k].m||0)===s.m);
+                        if(ch) s.char = ch;
+                    });
+                    macData[i] = {S:true, seq:steps};
+                }
+                else macData[i] = {N:true};
+            }
+            while(macData.length < 16) macData.push({N:true});
+            macData = macData.slice(0, 16);
+            renderGrid();
+            log("Mapa cargado ✓ (" + macData.length + " teclas)");
+        }
+
+        async function loadKeymap(){
+            try{
+                log("Leyendo keymap (GET)...");
+                const data = await api('/api/keymap');
+                const raw = (data && data.raw) ? data.raw : '';
+                log("RAW: " + raw.substring(0, 80) + (raw.length>80?"...":""));
+                if(raw.includes('|')) parseMapLine(raw);
+                else log("Respuesta inesperada: " + raw);
+            } catch(e){ log("Error: " + e.message); }
+            await refreshStatus();
+        }
+        btnGet.addEventListener('click', loadKeymap);
+
+        async function saveKeymap(){
+            try{
+                const mapStr = macData.map(keyToString).join("|");
+                log("Enviando: SETL " + mapStr.substring(0, 50) + "...");
+                const data = await apiJson('/api/keymap', 'POST', {raw: mapStr});
+                const raw = (data && data.raw) ? data.raw : '';
+                if(normalize(raw) === normalize(mapStr)) log("✅ Guardado OK — verificado");
+                else { log("⚠️ Verificación difiere; dispositivo responde:"); log(raw.substring(0,80)); if(raw.includes('|')) parseMapLine(raw); }
+            } catch(e){ log("Error al guardar: " + e.message); }
+            await refreshStatus();
+        }
+        btnSet.addEventListener('click', saveKeymap);
+
+        function normalize(s){ return s.replace(/\s+/g,' ').trim(); }
+
+        async function resetKeymap(){
+            try{
+                log("Restaurando default (RESET)...");
+                const data = await api('/api/reset', {method:'POST'});
+                const raw = (data && data.raw) ? data.raw : '';
+                if(raw.includes('|')){ parseMapLine(raw); log("✅ Default restaurado"); }
+                else log("Respuesta inesperada: " + raw);
+            } catch(e){ log("Error al restaurar: " + e.message); }
+            await refreshStatus();
+        }
+        btnReset.addEventListener('click', resetKeymap);
+
+        // ==================== PERFILES ====================
+        async function loadProfiles(){
+            try{
+                const data = await api('/api/profiles');
+                if(data && data.path) profilesPath.textContent = data.path;
+                renderProfiles((data && data.profiles) || {});
+            } catch(e){ log("Error cargando perfiles: " + e.message); }
+        }
+
+        function renderProfiles(profiles){
+            const names = Object.keys(profiles || {});
+            if(!names.length){
+                profilesList.innerHTML = '<div class="font-label-mono text-xs text-on-surface-variant opacity-60">Sin perfiles guardados.</div>';
+                return;
+            }
+            profilesList.innerHTML = "";
+            names.forEach(name => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2 bg-surface rounded border border-outline-variant/40 px-3 py-2';
+                const label = document.createElement('div');
+                label.className = 'flex-1 min-w-0';
+                label.innerHTML = `<div class="font-label-mono text-sm text-on-surface truncate">${escapeHtml(name)}</div>` +
+                    `<div class="font-label-mono text-[10px] text-on-surface-variant opacity-60">${escapeHtml((profiles[name]||{}).saved_at||'')}</div>`;
+                const apply = document.createElement('button');
+                apply.className = 'px-3 py-1 bg-primary-fixed-dim/10 border border-primary-fixed-dim rounded text-primary-fixed-dim font-label-mono text-xs hover:bg-primary-fixed-dim/20 whitespace-nowrap transition-colors';
+                apply.textContent = 'Aplicar';
+                apply.addEventListener('click', () => applyProfile(name));
+                const del = document.createElement('button');
+                del.className = 'px-3 py-1 bg-error/10 border border-error/50 rounded text-error font-label-mono text-xs hover:bg-error/20 whitespace-nowrap transition-colors';
+                del.textContent = 'Borrar';
+                del.addEventListener('click', () => deleteProfile(name));
+                row.appendChild(label); row.appendChild(apply); row.appendChild(del);
+                profilesList.appendChild(row);
+            });
+        }
+
+        async function saveCurrentProfile(){
+            const name = (profileName.value || '').trim();
+            if(!name){ log("⚠️ Escribí un nombre de perfil."); return; }
+            try{
+                const mapStr = macData.map(keyToString).join("|");
+                await apiJson('/api/profiles', 'POST', {name, raw: mapStr});
+                log("💾 Perfil guardado: " + name);
+                profileName.value = "";
+                await loadProfiles();
+            } catch(e){ log("Error guardando perfil: " + e.message); }
+        }
+        document.getElementById('btn-profile-save').addEventListener('click', saveCurrentProfile);
+        profileName.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); saveCurrentProfile(); } });
+
+        async function applyProfile(name){
+            try{
+                log("Aplicando perfil: " + name);
+                const data = await api('/api/profiles/' + encodeURIComponent(name) + '/apply', {method:'POST'});
+                const raw = (data && data.raw) ? data.raw : '';
+                if(raw.includes('|')){ parseMapLine(raw); log("✅ Perfil aplicado: " + name); }
+                else log("Respuesta inesperada: " + raw);
+            } catch(e){ log("Error aplicando perfil: " + e.message); }
+            await refreshStatus();
+        }
+
+        async function deleteProfile(name){
+            try{
+                await api('/api/profiles/' + encodeURIComponent(name), {method:'DELETE'});
+                log("🗑️ Perfil borrado: " + name);
+                await loadProfiles();
+            } catch(e){ log("Error borrando perfil: " + e.message); }
+        }
+
+        // ==================== INIT ====================
+        renderGrid();
+        loadProfiles();
+        refreshStatus();
+        setInterval(refreshStatus, 3000);
+    </script>
+</body></html>
