@@ -635,7 +635,10 @@
                 else if(t==="A") macData[i] = {A:true, mods:parseInt(parts[1]), c:parseInt(parts[2])};
                 else if(t==="S"){
                     // pasos separados por espacio; cada paso "mods:code" (hex) o "code" (hex)
-                    const steps = (parts[1]||"").trim().split(/\s+/).filter(Boolean).map(tok => {
+                    // OJO: NO usar parts[1] — el ':' de los modificadores (ej "S:2:B ...")
+                    // parte el string. Tomamos TODO lo que sigue al primer ':'.
+                    const stepsStr = parts.slice(1).join(':');
+                    const steps = stepsStr.trim().split(/\s+/).filter(Boolean).map(tok => {
                         const sep = tok.indexOf(':');
                         if(sep >= 0){
                             const m = parseInt(tok.slice(0,sep),16);
